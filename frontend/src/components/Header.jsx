@@ -120,7 +120,6 @@ function Header() {
 
   const accountActive =
     isActive("/profile") ||
-    isActive("/my-account") ||
     isActive("/change-password");
 
   return (
@@ -172,6 +171,10 @@ function Header() {
               My Research
             </Link>
 
+            <Link to="/my-account" className={`${navBtnBase} ${isActive("/my-account") ? navBtnActive : navBtnInactive}`}>
+              Fellowships &amp; Awards
+            </Link>
+
             {/* Reports dropdown */}
             <div className="relative" ref={reportsDropdownRef}>
               <button
@@ -215,9 +218,6 @@ function Header() {
                 <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
                   <Link to="/profile" className={`${dropdownItemBase} ${isActive("/profile") ? dropdownItemActive : dropdownItemInactive}`}>
                     Profile
-                  </Link>
-                  <Link to="/my-account" className={`${dropdownItemBase} ${isActive("/my-account") ? dropdownItemActive : dropdownItemInactive}`}>
-                    Fellowships &amp; Research Profile
                   </Link>
                   <Link to="/change-password" className={`${dropdownItemBase} ${isActive("/change-password") ? dropdownItemActive : dropdownItemInactive}`}>
                     Change Password
@@ -263,6 +263,9 @@ function Header() {
           <MobileNavLink to="/my-research" active={isActive("/my-research")} onClick={() => setMenuOpen(false)}>
             My Research
           </MobileNavLink>
+          <MobileNavLink to="/my-account" active={isActive("/my-account")} onClick={() => setMenuOpen(false)}>
+              Fellowships &amp; Awards
+          </MobileNavLink>
 
           {/* Role-specific */}
           {role === "hod" && (
@@ -293,13 +296,9 @@ function Header() {
             Export Data
           </MobileNavLink>
 
-          {/* Account */}
           <MobileSectionLabel>Account</MobileSectionLabel>
           <MobileNavLink to="/profile" active={isActive("/profile")} onClick={() => setMenuOpen(false)}>
             Profile
-          </MobileNavLink>
-          <MobileNavLink to="/my-account" active={isActive("/my-account")} onClick={() => setMenuOpen(false)}>
-            Fellowships &amp; Research Profile
           </MobileNavLink>
           <MobileNavLink to="/change-password" active={isActive("/change-password")} onClick={() => setMenuOpen(false)}>
             Change Password
