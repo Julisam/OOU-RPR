@@ -1,15 +1,86 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 
+/* ─── Icon helpers ─────────────────────────────────────────────────── */
+function HamburgerIcon({ open }) {
+  return (
+    <svg
+      className="h-6 w-6"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      {open ? (
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+      ) : (
+        <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h18M3 6h18M3 18h18" />
+      )}
+    </svg>
+  );
+}
+
+function ChevronDown({ className = "h-3.5 w-3.5" }) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+    </svg>
+  );
+}
+
+/* ─── Shared style helpers ─────────────────────────────────────────── */
+const navBtnBase =
+  "inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-sm font-semibold transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400";
+const navBtnActive =
+  "border-blue-600 bg-blue-600 text-white shadow-[0_8px_20px_-10px_rgba(37,99,235,0.7)]";
+const navBtnInactive =
+  "border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700";
+
+const dropdownItemBase =
+  "block w-full rounded-lg px-4 py-2.5 text-left text-sm font-semibold transition-colors";
+const dropdownItemActive = "bg-blue-600 text-white";
+const dropdownItemInactive = "text-slate-700 hover:bg-slate-100 hover:text-blue-700";
+
+/* ─── Mobile nav link ──────────────────────────────────────────────── */
+function MobileNavLink({ to, active, onClick, children }) {
+  return (
+    <Link
+      to={to}
+      onClick={onClick}
+      className={`block rounded-xl px-4 py-3 text-sm font-semibold transition-colors ${
+        active ? "bg-blue-600 text-white" : "text-slate-700 hover:bg-slate-100 hover:text-blue-700"
+      }`}
+    >
+      {children}
+    </Link>
+  );
+}
+
+/* ─── Mobile section header ────────────────────────────────────────── */
+function MobileSectionLabel({ children }) {
+  return (
+    <p className="mt-4 mb-1 px-4 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+      {children}
+    </p>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════ */
 function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const username = localStorage.getItem("username");
-  const currentPath = location.pathname;
   const role = localStorage.getItem("role");
-  const [openMenu, setOpenMenu] = useState(null);
-  const reportsRef = useRef(null);
-  const accountRef = useRef(null);
+  const currentPath = location.pathname;
+
+  // Mobile drawer open/close
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Desktop: which dropdown is open ("reports" | "account" | null)
+  const [openDropdown, setOpenDropdown] = useState(null);
+
+  const reportsDropdownRef = useRef(null);
+  const accountDropdownRef = useRef(null);
 
   const isActive = (path) => currentPath.startsWith(path);
 
@@ -18,184 +89,258 @@ function Header() {
     navigate("/login");
   };
 
+  // Close mobile menu & desktop dropdowns on route change
   useEffect(() => {
-    const timer = window.setTimeout(() => setOpenMenu(null), 0);
-    return () => window.clearTimeout(timer);
+    setMenuOpen(false);
+    setOpenDropdown(null);
   }, [currentPath]);
 
+  // Close desktop dropdowns on outside click
   useEffect(() => {
-    const handleClickOutside = (event) => {
+    const handler = (e) => {
       if (
-        reportsRef.current?.contains(event.target) ||
-        accountRef.current?.contains(event.target)
+        reportsDropdownRef.current?.contains(e.target) ||
+        accountDropdownRef.current?.contains(e.target)
       ) {
         return;
       }
-      setOpenMenu(null);
+      setOpenDropdown(null);
     };
-
-    document.addEventListener("pointerdown", handleClickOutside);
-    return () => {
-      document.removeEventListener("pointerdown", handleClickOutside);
-    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const navBaseClass =
-    "inline-flex items-center rounded-xl border px-4 py-2 text-sm font-semibold transition";
-  const navActiveClass =
-    "border-blue-600 bg-blue-600 text-white shadow-[0_12px_24px_-18px_rgba(37,99,235,0.8)]";
-  const navInactiveClass =
-    "border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700";
-  const navClass = (active) =>
-    `${navBaseClass} ${active ? navActiveClass : navInactiveClass}`;
+  const toggleDropdown = (name) =>
+    setOpenDropdown((prev) => (prev === name ? null : name));
 
-  const menuItemClass = (active) =>
-    `block rounded-lg px-4 py-2.5 text-sm font-semibold transition ${
-      active
-        ? "bg-blue-600 text-white"
-        : "text-slate-700 hover:bg-slate-100 hover:text-blue-700"
-    }`;
+  const reportsActive =
+    isActive("/annual-report") ||
+    isActive("/productivity-metrics") ||
+    isActive("/export-data");
+
+  const accountActive =
+    isActive("/profile") ||
+    isActive("/my-account") ||
+    isActive("/change-password");
 
   return (
-    <header className="border-b border-slate-200 bg-white shadow-[0_18px_45px_-40px_rgba(15,23,42,0.45)]">
-      <div className="max-w-7xl mx-auto px-8 py-5">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex items-center gap-4">
+    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white shadow-[0_4px_24px_-8px_rgba(15,23,42,0.12)]">
+      {/* ── Top bar ────────────────────────────────────────────────── */}
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between gap-4 sm:h-20">
+
+          {/* Logo + branding */}
+          <Link to="/dashboard" className="flex shrink-0 items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded-xl">
             <img
               alt="OOU Logo"
-              className="h-14 w-14 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm"
+              className="h-10 w-10 rounded-xl border border-slate-200 bg-white p-1 shadow-sm sm:h-12 sm:w-12"
               src="/oou.png"
             />
-            <div>
-              <h1 className="text-3xl font-extrabold text-slate-900">
+            <div className="leading-tight">
+              <p className="text-base font-extrabold text-slate-900 sm:text-lg">
                 OOU Research Portal
-              </h1>
-              <p className="text-sm font-medium text-slate-500">
-                Research Productivity Management System
+              </p>
+              <p className="hidden text-xs font-medium text-slate-400 sm:block">
+                Research Productivity Management
               </p>
             </div>
-          </div>
-          <nav className="flex flex-wrap gap-2">
-            {role==="hod" && (
-              <Link to="/hod-report" className={navClass(isActive("/hod-report"))}>
+          </Link>
+
+          {/* Desktop nav (md+) */}
+          <nav className="hidden items-center gap-1.5 md:flex" aria-label="Main navigation">
+            {role === "hod" && (
+              <Link to="/hod-report" className={`${navBtnBase} ${isActive("/hod-report") ? navBtnActive : navBtnInactive}`}>
                 HOD Report
               </Link>
             )}
-            {role==="dean" && (
-              <Link to="/dean-report" className={navClass(isActive("/dean-report"))}>
+            {role === "dean" && (
+              <Link to="/dean-report" className={`${navBtnBase} ${isActive("/dean-report") ? navBtnActive : navBtnInactive}`}>
                 Dean Report
               </Link>
             )}
-            {role==="dvc" && (
-              <Link to="/admin-report" className={navClass(isActive("/admin-report"))}>
+            {(role === "dvc" || role === "admin") && (
+              <Link to="/admin-report" className={`${navBtnBase} ${isActive("/admin-report") ? navBtnActive : navBtnInactive}`}>
                 Admin Report
               </Link>
             )}
-            <Link to="/dashboard" className={navClass(isActive("/dashboard"))}>
+
+            <Link to="/dashboard" className={`${navBtnBase} ${isActive("/dashboard") ? navBtnActive : navBtnInactive}`}>
               Dashboard
             </Link>
-            <Link to="/my-research" className={navClass(isActive("/my-research"))}>
+
+            <Link to="/my-research" className={`${navBtnBase} ${isActive("/my-research") ? navBtnActive : navBtnInactive}`}>
               My Research
             </Link>
 
-            <div className="relative group" ref={reportsRef}>
+            {/* Reports dropdown */}
+            <div className="relative" ref={reportsDropdownRef}>
               <button
                 type="button"
-                className={navClass(
-                  isActive("/annual-report") ||
-                    isActive("/productivity-metrics") ||
-                    isActive("/export-data"),
-                )}
-                onClick={() =>
-                  setOpenMenu((prev) => (prev === "reports" ? null : "reports"))
-                }
+                onClick={() => toggleDropdown("reports")}
+                aria-expanded={openDropdown === "reports"}
+                aria-haspopup="true"
+                className={`${navBtnBase} ${reportsActive ? navBtnActive : navBtnInactive}`}
               >
                 Reports
-                <span className="ml-2 text-[11px] opacity-70">▾</span>
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-150 ${openDropdown === "reports" ? "rotate-180" : ""}`} />
               </button>
-              <div
-                className={`absolute top-full left-0 mt-2 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl transition-all duration-150 z-20 ${
-                  openMenu === "reports"
-                    ? "opacity-100 visible"
-                    : "opacity-0 invisible group-hover:opacity-100 group-hover:visible"
-                }`}
-              >
-                <Link to="/annual-report" className={menuItemClass(isActive("/annual-report"))}>
-                  Annual Report
-                </Link>
-                <Link
-                  to="/productivity-metrics"
-                  className={menuItemClass(isActive("/productivity-metrics"))}
-                >
-                  Productivity Metrics
-                </Link>
-                <Link to="/export-data" className={menuItemClass(isActive("/export-data"))}>
-                  Export Data
-                </Link>
-              </div>
+              {openDropdown === "reports" && (
+                <div className="absolute right-0 top-full mt-2 w-52 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
+                  <Link to="/annual-report" className={`${dropdownItemBase} ${isActive("/annual-report") ? dropdownItemActive : dropdownItemInactive}`}>
+                    Annual Report
+                  </Link>
+                  <Link to="/productivity-metrics" className={`${dropdownItemBase} ${isActive("/productivity-metrics") ? dropdownItemActive : dropdownItemInactive}`}>
+                    Productivity Metrics
+                  </Link>
+                  <Link to="/export-data" className={`${dropdownItemBase} ${isActive("/export-data") ? dropdownItemActive : dropdownItemInactive}`}>
+                    Export Data
+                  </Link>
+                </div>
+              )}
             </div>
 
-            <div className="relative group" ref={accountRef}>
+            {/* Account dropdown */}
+            <div className="relative" ref={accountDropdownRef}>
               <button
                 type="button"
-                className={navClass(
-                  isActive("/profile") ||
-                    isActive("/my-account") ||
-                    isActive("/change-password"),
-                )}
-                onClick={() =>
-                  setOpenMenu((prev) => (prev === "account" ? null : "account"))
-                }
+                onClick={() => toggleDropdown("account")}
+                aria-expanded={openDropdown === "account"}
+                aria-haspopup="true"
+                className={`${navBtnBase} ${accountActive ? navBtnActive : navBtnInactive}`}
               >
-                My Account
-                <span className="ml-2 text-[11px] opacity-70">▾</span>
+                {username || "Account"}
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-150 ${openDropdown === "account" ? "rotate-180" : ""}`} />
               </button>
-              <div
-                className={`absolute top-full left-0 mt-2 w-56 rounded-2xl border border-slate-200 bg-white p-2 shadow-xl transition-all duration-150 z-20 ${
-                  openMenu === "account"
-                    ? "opacity-100 visible"
-                    : "opacity-0 invisible group-hover:opacity-100 group-hover:visible"
-                }`}
-              >
-                <Link to="/profile" className={menuItemClass(isActive("/profile"))}>
-                  Profile
-                </Link>
-                <Link
-                  to="/my-account"
-                  className={menuItemClass(isActive("/my-account"))}
-                >
-                  Fellowships &amp; Research Profile
-                </Link>
-                <Link
-                  to="/change-password"
-                  className={menuItemClass(isActive("/change-password"))}
-                >
-                  Change Password
-                </Link>
-                <button onClick={handleLogout} className={menuItemClass(false)}>
-                  Logout
-                </button>
-              </div>
+              {openDropdown === "account" && (
+                <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
+                  <Link to="/profile" className={`${dropdownItemBase} ${isActive("/profile") ? dropdownItemActive : dropdownItemInactive}`}>
+                    Profile
+                  </Link>
+                  <Link to="/my-account" className={`${dropdownItemBase} ${isActive("/my-account") ? dropdownItemActive : dropdownItemInactive}`}>
+                    Fellowships &amp; Research Profile
+                  </Link>
+                  <Link to="/change-password" className={`${dropdownItemBase} ${isActive("/change-password") ? dropdownItemActive : dropdownItemInactive}`}>
+                    Change Password
+                  </Link>
+                  <hr className="my-1.5 border-slate-100" />
+                  <button
+                    onClick={handleLogout}
+                    className={`${dropdownItemBase} ${dropdownItemInactive} text-rose-600 hover:bg-rose-50 hover:text-rose-700`}
+                  >
+                    Log out
+                  </button>
+                </div>
+              )}
             </div>
           </nav>
+
+          {/* Mobile hamburger */}
+          <button
+            type="button"
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 md:hidden"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-expanded={menuOpen}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+          >
+            <HamburgerIcon open={menuOpen} />
+          </button>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-8 py-3 mt-1 border-t border-slate-200 text-sm text-slate-600 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="font-semibold text-slate-700">Hello {username || "User"}</div>
-        <div className="flex flex-wrap items-center gap-3">
+      {/* ── Mobile drawer ──────────────────────────────────────────── */}
+      {menuOpen && (
+        <div className="border-t border-slate-200 bg-white px-4 pb-6 pt-3 md:hidden" role="navigation" aria-label="Mobile navigation">
+          {/* Greeting */}
+          <p className="mb-3 px-4 text-xs font-semibold text-slate-500">
+            Hello, <span className="text-slate-800">{username || "User"}</span>
+          </p>
+
+          {/* Primary links */}
+          <MobileSectionLabel>Navigation</MobileSectionLabel>
+          <MobileNavLink to="/dashboard" active={isActive("/dashboard")} onClick={() => setMenuOpen(false)}>
+            Dashboard
+          </MobileNavLink>
+          <MobileNavLink to="/my-research" active={isActive("/my-research")} onClick={() => setMenuOpen(false)}>
+            My Research
+          </MobileNavLink>
+
+          {/* Role-specific */}
+          {role === "hod" && (
+            <MobileNavLink to="/hod-report" active={isActive("/hod-report")} onClick={() => setMenuOpen(false)}>
+              HOD Report
+            </MobileNavLink>
+          )}
+          {role === "dean" && (
+            <MobileNavLink to="/dean-report" active={isActive("/dean-report")} onClick={() => setMenuOpen(false)}>
+              Dean Report
+            </MobileNavLink>
+          )}
+          {(role === "dvc" || role === "admin") && (
+            <MobileNavLink to="/admin-report" active={isActive("/admin-report")} onClick={() => setMenuOpen(false)}>
+              Admin Report
+            </MobileNavLink>
+          )}
+
+          {/* Reports */}
+          <MobileSectionLabel>Reports</MobileSectionLabel>
+          <MobileNavLink to="/annual-report" active={isActive("/annual-report")} onClick={() => setMenuOpen(false)}>
+            Annual Report
+          </MobileNavLink>
+          <MobileNavLink to="/productivity-metrics" active={isActive("/productivity-metrics")} onClick={() => setMenuOpen(false)}>
+            Productivity Metrics
+          </MobileNavLink>
+          <MobileNavLink to="/export-data" active={isActive("/export-data")} onClick={() => setMenuOpen(false)}>
+            Export Data
+          </MobileNavLink>
+
+          {/* Account */}
+          <MobileSectionLabel>Account</MobileSectionLabel>
+          <MobileNavLink to="/profile" active={isActive("/profile")} onClick={() => setMenuOpen(false)}>
+            Profile
+          </MobileNavLink>
+          <MobileNavLink to="/my-account" active={isActive("/my-account")} onClick={() => setMenuOpen(false)}>
+            Fellowships &amp; Research Profile
+          </MobileNavLink>
+          <MobileNavLink to="/change-password" active={isActive("/change-password")} onClick={() => setMenuOpen(false)}>
+            Change Password
+          </MobileNavLink>
+
+          {/* Logout */}
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <button
+              onClick={handleLogout}
+              className="block w-full rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-left text-sm font-semibold text-rose-600 transition hover:bg-rose-100"
+            >
+              Log out
+            </button>
+          </div>
+
+          {/* Footer link */}
           <a
             href="https://oouagoiwoye.edu.ng"
             target="_blank"
             rel="noopener noreferrer"
-            className="font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+            className="mt-3 block px-4 text-xs font-medium text-blue-600 hover:underline"
           >
-            Visit official site
+            Visit official site ↗
           </a>
-          <span className="text-slate-300">|</span>
-          <button onClick={handleLogout} className="font-semibold text-blue-600 hover:text-blue-700 hover:underline">
-            Logout
-          </button>
+        </div>
+      )}
+
+      {/* ── Desktop sub-bar (greeting + external link) ─────────────── */}
+      <div className="hidden border-t border-slate-100 bg-slate-50/70 md:block">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-1.5 lg:px-8">
+          <span className="text-xs font-semibold text-slate-500">
+            Hello, <span className="text-slate-700">{username || "User"}</span>
+          </span>
+          <a
+            href="https://oouagoiwoye.edu.ng"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+          >
+            Visit official site ↗
+          </a>
         </div>
       </div>
     </header>

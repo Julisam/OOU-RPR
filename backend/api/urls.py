@@ -11,9 +11,11 @@ router.register(r'national-academy-fellowships', views.NationalAcademyFellowship
 router.register(r'international-professional-fellowships', views.InternationalProfessionalFellowshipViewSet, basename='international-professional-fellowships')
 router.register(r'visiting-professorships', views.VisitingProfessorshipViewSet, basename='visiting-professorships')
 router.register(r'research-awards', views.ResearchAwardViewSet, basename='research-awards')
-router.register(r'journal-index-statuses', views.JournalIndexStatusViewSet, basename='journal-index-statuses')
 router.register(r'editorial-appointments', views.EditorialAppointmentViewSet, basename='editorial-appointments')
 router.register(r'research-group-memberships', views.ResearchGroupMembershipViewSet, basename='research-group-memberships')
+router.register(r'active-research-projects', views.ActiveResearchProjectViewSet, basename='active-research-projects')
+router.register(r'completed-research-projects', views.CompletedResearchProjectViewSet, basename='completed-research-projects')
+router.register(r'phd-theses', views.PhDThesisViewSet, basename='phd-theses')
 
 urlpatterns = [
     path('', include(router.urls)),

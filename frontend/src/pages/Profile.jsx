@@ -4,510 +4,324 @@ import Header from "../components/Header";
 import Footer from "../components/Footer";
 import { states } from "../data/states";
 
-const fetchProfile = async (setUserInfo, setFormData, setLoading, isActive) => {
+/* ─── Helpers ────────────────────────────────────────────────────── */
+const inputClass =
+  "mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 " +
+  "focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200/70 sm:text-sm";
+
+const selectClass =
+  "mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 " +
+  "focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200/70 sm:text-sm";
+
+const fieldLabelClass = "block text-sm font-semibold text-slate-700";
+
+const displayClass =
+  "mt-2 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3";
+
+/* ─── Field component (view/edit mode) ──────────────────────────── */
+function ProfileField({ label, name, type = "text", value, editing, onChange, placeholder, colSpan = "" }) {
+  return (
+    <div className={colSpan}>
+      <label htmlFor={name} className={fieldLabelClass}>
+        {label}
+      </label>
+      {editing ? (
+        <input
+          id={name}
+          type={type}
+          name={name}
+          value={value || ""}
+          onChange={onChange}
+          placeholder={placeholder || `Enter ${label.toLowerCase()}`}
+          className={inputClass}
+          autoComplete="off"
+        />
+      ) : (
+        <div className={displayClass}>
+          <p className="text-sm font-medium text-slate-900">{value || <span className="text-slate-400">Not provided</span>}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Data-loading helpers ───────────────────────────────────────── */
+const loadProfile = async (setUserInfo, setFormData, setLoading, isActive) => {
   try {
-    const response = await api.get("profile/");
+    const { data } = await api.get("profile/");
     if (!isActive()) return;
-    setUserInfo(response.data);
-    setFormData(response.data);
-  } catch (error) {
-    if (isActive()) console.error("Error fetching profile:", error);
+    setUserInfo(data);
+    setFormData(data);
+  } catch (err) {
+    if (isActive()) console.error("Error fetching profile:", err);
   } finally {
     if (isActive()) setLoading(false);
   }
 };
 
-const fetchDepartments = async (setDepartments, isActive) => {
+const loadDepartments = async (setDepartments, isActive) => {
   try {
-    const response = await api.get("departments/");
+    const { data } = await api.get("departments/");
     if (!isActive()) return;
-    setDepartments(response.data.sort((a, b) => a.name.localeCompare(b.name)));
-  } catch (error) {
-    if (isActive()) console.error("Error fetching departments:", error);
+    setDepartments(data.sort((a, b) => a.name.localeCompare(b.name)));
+  } catch (err) {
+    if (isActive()) console.error("Error fetching departments:", err);
   }
 };
 
+/* ═══════════════════════════════════════════════════════════════════ */
 function Profile() {
   const [userInfo, setUserInfo] = useState({});
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [formData, setFormData] = useState({});
   const [departments, setDepartments] = useState([]);
 
-  const handleEdit = () => {
-    setEditing(true);
-  };
-
   useEffect(() => {
     let active = true;
-
-    fetchProfile(setUserInfo, setFormData, setLoading, () => active);
-    fetchDepartments(setDepartments, () => active);
-
-    return () => {
-      active = false;
-    };
+    loadProfile(setUserInfo, setFormData, setLoading, () => active);
+    loadDepartments(setDepartments, () => active);
+    return () => { active = false; };
   }, []);
+
+  const handleChange = (e) =>
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   const handleCancel = () => {
     setFormData(userInfo);
     setEditing(false);
+    setSaveError("");
   };
 
   const handleSave = async () => {
+    setSaving(true);
+    setSaveError("");
     try {
-      const response = await api.put("profile/", formData);
-      setUserInfo(response.data);
+      const { data } = await api.put("profile/", formData);
+      setUserInfo(data);
       setEditing(false);
-    } catch (error) {
-      console.error("Error updating profile:", error);
+    } catch (err) {
+      setSaveError(err?.response?.data?.detail || "Could not save changes. Please try again.");
+    } finally {
+      setSaving(false);
     }
-  };
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64 text-slate-500">
-        Loading...
+      <div className="flex min-h-dvh flex-col bg-slate-50">
+        <Header />
+        <main className="flex flex-1 items-center justify-center px-4 py-12">
+          <p className="text-sm text-slate-500">Loading profile…</p>
+        </main>
+        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50/30 to-indigo-50/40 flex flex-col">
+    <div className="flex min-h-dvh flex-col bg-slate-50">
       <Header />
 
-      <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-8">
-        <div className="max-w-6xl mx-auto h-full">
-          <div className="bg-white/80 backdrop-blur-xl rounded-3xl border border-white/20 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.25)] h-full min-h-[calc(100vh-12rem)] flex flex-col">
-            <div className="px-8 py-8 border-b border-slate-200/50">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-linear-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center">
-                  <svg
-                    className="w-8 h-8 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    />
+      <main className="flex-1 w-full px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="mx-auto max-w-5xl">
+          <div className="rounded-3xl border border-slate-200 bg-white shadow-[0_8px_32px_-16px_rgba(15,23,42,0.15)]">
+
+            {/* ── Page header ────────────────────────────────────── */}
+            <div className="flex flex-col gap-4 border-b border-slate-200 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-sm">
+                  <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold bg-linear-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-                    Profile
-                  </h1>
-                  <p className="text-slate-600 mt-1">
-                    Manage your academic profile information
-                  </p>
+                  <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">Profile</h1>
+                  <p className="text-sm text-slate-500">Manage your academic profile</p>
                 </div>
               </div>
-            </div>
 
-            <div className="flex-1 p-8">
-              <div className="mb-8 flex flex-wrap gap-4">
+              {/* Action buttons — always visible at top */}
+              <div className="flex gap-2.5">
                 {editing ? (
                   <>
                     <button
                       onClick={handleSave}
-                      className="px-8 py-4 bg-linear-to-r from-blue-600 to-blue-700 text-white rounded-2xl font-semibold hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
+                      disabled={saving}
+                      className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      Save Changes
+                      {saving ? "Saving…" : "Save Changes"}
                     </button>
                     <button
                       onClick={handleCancel}
-                      className="px-8 py-4 bg-slate-100 text-slate-700 rounded-2xl font-semibold hover:bg-slate-200 transform hover:scale-105 transition-all duration-200"
+                      disabled={saving}
+                      className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 active:scale-[0.98]"
                     >
                       Cancel
                     </button>
                   </>
                 ) : (
                   <button
-                    onClick={handleEdit}
-                    className="px-8 py-4 bg-linear-to-r from-blue-600 to-blue-700 text-white rounded-2xl font-semibold hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
+                    onClick={() => setEditing(true)}
+                    className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 active:scale-[0.98]"
                   >
                     Edit Profile
                   </button>
                 )}
               </div>
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                <div className="group">
-                  <label className="block text-sm font-semibold text-slate-700 mb-3">
-                    Title
-                  </label>
-                  {editing ? (
-                    <input
-                      type="text"
-                      name="title"
-                      value={formData.title || ""}
-                      onChange={handleChange}
-                      className="w-full rounded-2xl border-2 border-slate-200 bg-white/50 px-6 py-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
-                      placeholder="Dr., Prof., etc."
-                    />
-                  ) : (
-                    <div className="bg-slate-50/50 rounded-2xl px-6 py-4 border border-slate-200">
-                      <p className="text-slate-900 font-medium">
-                        {userInfo.title || "Not provided"}
-                      </p>
-                    </div>
-                  )}
-                </div>
+            {/* ── Save error ─────────────────────────────────────── */}
+            {saveError && (
+              <div className="mx-5 mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600 sm:mx-8">
+                {saveError}
+              </div>
+            )}
 
-                <div className="group">
-                  <label className="block text-sm font-semibold text-slate-700 mb-3">
-                    Surname
-                  </label>
-                  {editing ? (
-                    <input
-                      type="text"
-                      name="sname"
-                      value={formData.sname || ""}
-                      onChange={handleChange}
-                      className="w-full rounded-2xl border-2 border-slate-200 bg-white/50 px-6 py-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
-                      placeholder="Enter your surname"
-                    />
-                  ) : (
-                    <div className="bg-slate-50/50 rounded-2xl px-6 py-4 border border-slate-200">
-                      <p className="text-slate-900 font-medium">
-                        {userInfo.sname || "Not provided"}
-                      </p>
-                    </div>
-                  )}
-                </div>
+            {/* ── Form grid ──────────────────────────────────────── */}
+            <div className="px-5 py-6 sm:px-8 sm:py-8">
+              {/* Section: Personal Info */}
+              <h2 className="mb-4 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
+                Personal Information
+              </h2>
+              {/* 1 col → 2 col (sm) → 3 col (lg) */}
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                <ProfileField label="Title" name="title" value={formData.title} editing={editing} onChange={handleChange} placeholder="Dr., Prof., etc." />
+                <ProfileField label="Surname" name="sname" value={formData.sname} editing={editing} onChange={handleChange} placeholder="Enter surname" />
+                <ProfileField label="First Name" name="fname" value={formData.fname} editing={editing} onChange={handleChange} placeholder="Enter first name" />
+                <ProfileField label="Middle Name" name="mname" value={formData.mname} editing={editing} onChange={handleChange} placeholder="Optional" />
 
-                <div className="group">
-                  <label className="block text-sm font-semibold text-slate-700 mb-3">
-                    First Name
-                  </label>
-                  {editing ? (
-                    <input
-                      type="text"
-                      name="fname"
-                      value={formData.fname || ""}
-                      onChange={handleChange}
-                      className="w-full rounded-2xl border-2 border-slate-200 bg-white/50 px-6 py-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
-                      placeholder="Enter your first name"
-                    />
-                  ) : (
-                    <div className="bg-slate-50/50 rounded-2xl px-6 py-4 border border-slate-200">
-                      <p className="text-slate-900 font-medium">
-                        {userInfo.fname || "Not provided"}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="group">
-                  <label className="block text-sm font-semibold text-slate-700 mb-3">
-                    Middle Name
-                  </label>
-                  {editing ? (
-                    <input
-                      type="text"
-                      name="mname"
-                      value={formData.mname || ""}
-                      onChange={handleChange}
-                      className="w-full rounded-2xl border-2 border-slate-200 bg-white/50 px-6 py-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
-                      placeholder="Enter your middle name (optional)"
-                    />
-                  ) : (
-                    <div className="bg-slate-50/50 rounded-2xl px-6 py-4 border border-slate-200">
-                      <p className="text-slate-900 font-medium">
-                        {userInfo.mname || "Not provided"}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="group">
-                  <label className="block text-sm font-semibold text-slate-700 mb-3">
-                    Academic Rank
-                  </label>
+                {/* Academic Rank — custom select */}
+                <div>
+                  <label htmlFor="academic_rank" className={fieldLabelClass}>Academic Rank</label>
                   {editing ? (
                     <select
+                      id="academic_rank"
                       name="academic_rank"
                       value={formData.academic_rank || ""}
                       onChange={handleChange}
-                      className="w-full rounded-2xl border-2 border-slate-200 bg-white/50 px-6 py-4 text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
+                      className={selectClass}
                     >
-                      <option value="">Select academic rank</option>
+                      <option value="">Select rank</option>
                       <option value="professor">Professor</option>
-                      <option value="associate_professor">
-                        Associate Professor
-                      </option>
+                      <option value="associate_professor">Associate Professor</option>
                       <option value="senior_lecturer">Senior Lecturer</option>
                       <option value="lecturer_i">Lecturer I</option>
                       <option value="lecturer_ii">Lecturer II</option>
-                      <option value="assistant_lecturer">
-                        Assistant Lecturer
-                      </option>
-                      <option value="graduate_assistant">
-                        Graduate Assistant
-                      </option>
+                      <option value="assistant_lecturer">Assistant Lecturer</option>
+                      <option value="graduate_assistant">Graduate Assistant</option>
                     </select>
                   ) : (
-                    <div className="bg-slate-50/50 rounded-2xl px-6 py-4 border border-slate-200">
-                      <p className="text-slate-900 font-medium">
+                    <div className={displayClass}>
+                      <p className="text-sm font-medium text-slate-900">
                         {userInfo.academic_rank
-                          ?.replace("_", " ")
-                          .replace(/\b\w/g, (l) => l.toUpperCase()) ||
-                          "Not provided"}
+                          ? userInfo.academic_rank.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())
+                          : <span className="text-slate-400">Not provided</span>
+                        }
                       </p>
                     </div>
                   )}
                 </div>
 
-                <div className="group md:col-span-2 xl:col-span-1">
-                  <label className="block text-sm font-semibold text-slate-700 mb-3">
-                    Department
-                  </label>
+                {/* Department — custom select */}
+                <div>
+                  <label htmlFor="department" className={fieldLabelClass}>Department</label>
                   {editing ? (
                     <select
+                      id="department"
                       name="department"
                       value={formData.department || ""}
                       onChange={handleChange}
-                      className="w-full rounded-2xl border-2 border-slate-200 bg-white/50 px-6 py-4 text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
+                      className={selectClass}
                     >
                       <option value="">Select department</option>
                       {departments.map((dept) => (
-                        <option key={dept.code} value={dept.code}>
-                          {dept.name}
-                        </option>
+                        <option key={dept.code} value={dept.code}>{dept.name}</option>
                       ))}
                     </select>
                   ) : (
-                    <div className="bg-slate-50/50 rounded-2xl px-6 py-4 border border-slate-200">
-                      <p className="text-slate-900 font-medium">
-                        {userInfo.department_name || "Not provided"}
+                    <div className={displayClass}>
+                      <p className="text-sm font-medium text-slate-900">
+                        {userInfo.department_name || <span className="text-slate-400">Not provided</span>}
                       </p>
                       {userInfo.faculty_name && (
-                        <p className="text-xs text-slate-500 mt-1">
-                          {userInfo.faculty_name}
-                        </p>
+                        <p className="mt-0.5 text-xs text-slate-500">{userInfo.faculty_name}</p>
                       )}
                     </div>
                   )}
                 </div>
+              </div>
 
-                <div className="group">
-                  <label className="block text-sm font-semibold text-slate-700 mb-3">
-                    Personal Email
-                  </label>
-                  {editing ? (
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email || ""}
-                      onChange={handleChange}
-                      className="w-full rounded-2xl border-2 border-slate-200 bg-white/50 px-6 py-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
-                      placeholder="Enter your personal email"
-                    />
-                  ) : (
-                    <div className="bg-slate-50/50 rounded-2xl px-6 py-4 border border-slate-200">
-                      <p className="text-slate-900 font-medium">
-                        {userInfo.email || "Not provided"}
-                      </p>
-                    </div>
-                  )}
-                </div>
+              {/* Section: Contact */}
+              <h2 className="mb-4 mt-8 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
+                Contact &amp; Location
+              </h2>
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                <ProfileField label="Personal Email" name="email" type="email" value={formData.email} editing={editing} onChange={handleChange} placeholder="personal@email.com" />
+                <ProfileField label="Official Email" name="officialemail" type="email" value={formData.officialemail} editing={editing} onChange={handleChange} placeholder="staff@oouagoiwoye.edu.ng" />
+                <ProfileField label="Phone Number" name="phone_number" type="tel" value={formData.phone_number} editing={editing} onChange={handleChange} placeholder="+234 800 000 0000" />
 
-                <div className="group">
-                  <label className="block text-sm font-semibold text-slate-700 mb-3">
-                    Official Email
-                  </label>
-                  {editing ? (
-                    <input
-                      type="email"
-                      name="officialemail"
-                      value={formData.officialemail || ""}
-                      onChange={handleChange}
-                      className="w-full rounded-2xl border-2 border-slate-200 bg-white/50 px-6 py-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
-                      placeholder="Enter your official email"
-                    />
-                  ) : (
-                    <div className="bg-slate-50/50 rounded-2xl px-6 py-4 border border-slate-200">
-                      <p className="text-slate-900 font-medium">
-                        {userInfo.officialemail || "Not provided"}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="group">
-                  <label className="block text-sm font-semibold text-slate-700 mb-3">
-                    Phone Number
-                  </label>
-                  {editing ? (
-                    <input
-                      type="tel"
-                      name="phone_number"
-                      value={formData.phone_number || ""}
-                      onChange={handleChange}
-                      className="w-full rounded-2xl border-2 border-slate-200 bg-white/50 px-6 py-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
-                      placeholder="Enter your phone number"
-                    />
-                  ) : (
-                    <div className="bg-slate-50/50 rounded-2xl px-6 py-4 border border-slate-200">
-                      <p className="text-slate-900 font-medium">
-                        {userInfo.phone_number || "Not provided"}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="group md:col-span-2 xl:col-span-1">
-                  <label className="block text-sm font-semibold text-slate-700 mb-3">
-                    Specialization
-                  </label>
-                  {editing ? (
-                    <input
-                      type="text"
-                      name="specialization"
-                      value={formData.specialization || ""}
-                      onChange={handleChange}
-                      className="w-full rounded-2xl border-2 border-slate-200 bg-white/50 px-6 py-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
-                      placeholder="Enter your specialization"
-                    />
-                  ) : (
-                    <div className="bg-slate-50/50 rounded-2xl px-6 py-4 border border-slate-200">
-                      <p className="text-slate-900 font-medium">
-                        {userInfo.specialization || "Not provided"}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="group">
-                  <label className="block text-sm font-semibold text-slate-700 mb-3">
-                    State of Origin
-                  </label>
+                {/* State of origin */}
+                <div>
+                  <label htmlFor="state_of_origin" className={fieldLabelClass}>State of Origin</label>
                   {editing ? (
                     <select
+                      id="state_of_origin"
                       name="state_of_origin"
                       value={formData.state_of_origin || ""}
                       onChange={handleChange}
-                      className="w-full rounded-2xl border-2 border-slate-200 bg-white/50 px-6 py-4 text-slate-900 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
+                      className={selectClass}
                     >
-                      <option value="">Select state of origin</option>
+                      <option value="">Select state</option>
                       {states.map((state) => (
-                        <option key={state} value={state}>
-                          {state}
-                        </option>
+                        <option key={state} value={state}>{state}</option>
                       ))}
                     </select>
                   ) : (
-                    <div className="bg-slate-50/50 rounded-2xl px-6 py-4 border border-slate-200">
-                      <p className="text-slate-900 font-medium">
-                        {userInfo.state_of_origin || "Not provided"}
+                    <div className={displayClass}>
+                      <p className="text-sm font-medium text-slate-900">
+                        {userInfo.state_of_origin || <span className="text-slate-400">Not provided</span>}
                       </p>
                     </div>
                   )}
                 </div>
 
-                <div className="group">
-                  <label className="block text-sm font-semibold text-slate-700 mb-3">
-                    ORCID ID
-                  </label>
-                  {editing ? (
-                    <input
-                      type="text"
-                      name="orcid_id"
-                      value={formData.orcid_id || ""}
-                      onChange={handleChange}
-                      className="w-full rounded-2xl border-2 border-slate-200 bg-white/50 px-6 py-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
-                      placeholder="0000-0000-0000-0000"
-                    />
-                  ) : (
-                    <div className="bg-slate-50/50 rounded-2xl px-6 py-4 border border-slate-200">
-                      <p className="text-slate-900 font-medium">
-                        {userInfo.orcid_id || "Not provided"}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="group">
-                  <label className="block text-sm font-semibold text-slate-700 mb-3">
-                    Scopus ID
-                  </label>
-                  {editing ? (
-                    <input
-                      type="text"
-                      name="scopus_id"
-                      value={formData.scopus_id || ""}
-                      onChange={handleChange}
-                      className="w-full rounded-2xl border-2 border-slate-200 bg-white/50 px-6 py-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
-                      placeholder="Enter your Scopus ID"
-                    />
-                  ) : (
-                    <div className="bg-slate-50/50 rounded-2xl px-6 py-4 border border-slate-200">
-                      <p className="text-slate-900 font-medium">
-                        {userInfo.scopus_id || "Not provided"}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="group">
-                  <label className="block text-sm font-semibold text-slate-700 mb-3">
-                    Google Scholar ID (with OOU affiliation)
-                  </label>
-                  {editing ? (
-                    <input
-                      type="text"
-                      name="google_scholar_id"
-                      value={formData.google_scholar_id || ""}
-                      onChange={handleChange}
-                      className="w-full rounded-2xl border-2 border-slate-200 bg-white/50 px-6 py-4 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
-                      placeholder="Enter your Google Scholar ID"
-                    />
-                  ) : (
-                    <div className="bg-slate-50/50 rounded-2xl px-6 py-4 border border-slate-200">
-                      <p className="text-slate-900 font-medium">
-                        {userInfo.google_scholar_id || "Not provided"}
-                      </p>
-                    </div>
-                  )}
-                </div>
+                <ProfileField label="Specialization" name="specialization" value={formData.specialization} editing={editing} onChange={handleChange} placeholder="e.g. Machine Learning" />
               </div>
 
-              <div className="mt-12 flex flex-wrap gap-4">
-                {editing ? (
-                  <>
-                    <button
-                      onClick={handleSave}
-                      className="px-8 py-4 bg-linear-to-r from-blue-600 to-blue-700 text-white rounded-2xl font-semibold hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
-                    >
-                      Save Changes
-                    </button>
-                    <button
-                      onClick={handleCancel}
-                      className="px-8 py-4 bg-slate-100 text-slate-700 rounded-2xl font-semibold hover:bg-slate-200 transform hover:scale-105 transition-all duration-200"
-                    >
-                      Cancel
-                    </button>
-                  </>
-                ) : (
+              {/* Section: Research IDs */}
+              <h2 className="mb-4 mt-8 text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
+                Research Identifiers
+              </h2>
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                <ProfileField label="ORCID ID" name="orcid_id" value={formData.orcid_id} editing={editing} onChange={handleChange} placeholder="0000-0000-0000-0000" />
+                <ProfileField label="Scopus ID" name="scopus_id" value={formData.scopus_id} editing={editing} onChange={handleChange} placeholder="Enter Scopus ID" />
+                <ProfileField label="Google Scholar ID" name="google_scholar_id" value={formData.google_scholar_id} editing={editing} onChange={handleChange} placeholder="Enter Scholar ID" />
+              </div>
+
+              {/* Bottom actions (duplicate for long forms on desktop) */}
+              {editing && (
+                <div className="mt-8 flex gap-2.5">
                   <button
-                    onClick={handleEdit}
-                    className="px-8 py-4 bg-linear-to-r from-blue-600 to-blue-700 text-white rounded-2xl font-semibold hover:from-blue-700 hover:to-blue-800 transform hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl"
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    Edit Profile
+                    {saving ? "Saving…" : "Save Changes"}
                   </button>
-                )}
-              </div>
+                  <button
+                    onClick={handleCancel}
+                    disabled={saving}
+                    className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 active:scale-[0.98]"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             </div>
+
           </div>
         </div>
       </main>

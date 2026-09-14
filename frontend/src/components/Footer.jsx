@@ -2,10 +2,20 @@ const currentYear = new Date().getFullYear();
 
 function Footer() {
   return (
-    <footer className="bg-slate-50 border-t border-slate-200 mt-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="text-center text-sm text-slate-500">
-          <p>&copy; {currentYear} Olabisi Onabanjo University. All rights reserved.</p>
+    <footer className="mt-auto border-t border-slate-200 bg-white">
+      <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+        <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-between">
+          <p className="text-center text-xs text-slate-400 sm:text-left">
+            &copy; {currentYear} Olabisi Onabanjo University. All rights reserved.
+          </p>
+          <a
+            href="https://oouagoiwoye.edu.ng"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
+          >
+            oouagoiwoye.edu.ng ↗
+          </a>
         </div>
       </div>
     </footer>

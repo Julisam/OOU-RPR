@@ -23,54 +23,56 @@ function Login() {
       localStorage.setItem(ACCESS_TOKEN, data.access);
       localStorage.setItem(REFRESH_TOKEN, data.refresh);
 
-      // Decode JWT and store user info
       const payload = JSON.parse(atob(data.access.split(".")[1]));
       localStorage.setItem("username", payload.username);
       localStorage.setItem("role", payload.role);
 
       navigate("/dashboard");
     } catch {
-      setError("Invalid credentials");
+      setError("Invalid credentials. Please check your Staff ID and password.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-50">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -left-24 top-12 h-56 w-56 rounded-full bg-blue-200/50 blur-3xl" />
-        <div className="absolute -right-16 bottom-0 h-64 w-64 rounded-full bg-emerald-200/40 blur-3xl" />
+    /* min-h-dvh handles mobile browser chrome (address bar) better than min-h-screen */
+    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-slate-50">
+      {/* Decorative blobs — pointer-events-none so they never block taps */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        <div className="absolute -left-20 -top-10 h-72 w-72 rounded-full bg-blue-200/40 blur-3xl sm:h-96 sm:w-96" />
+        <div className="absolute -bottom-10 -right-16 h-64 w-64 rounded-full bg-emerald-200/35 blur-3xl sm:h-80 sm:w-80" />
       </div>
-      <div className="relative flex min-h-screen items-center justify-center px-4">
-        <div className="w-full max-w-sm rounded-3xl border border-slate-200/70 bg-white/90 p-8 shadow-[0_24px_60px_-40px_rgba(15,23,42,0.35)] backdrop-blur">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600">
-              <img
-                src="/oou.png"
-                alt="OOU"
-                className="h-8 w-8 object-contain"
-              />
+
+      {/* Centred card */}
+      <div className="relative flex flex-1 items-center justify-center px-4 py-10 sm:py-16">
+        <div className="w-full max-w-sm rounded-3xl border border-slate-200/80 bg-white/90 p-6 shadow-[0_24px_60px_-30px_rgba(15,23,42,0.3)] backdrop-blur sm:p-8">
+
+          {/* Branding */}
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-600 shadow-sm">
+              <img src="/oou.png" alt="OOU Logo" className="h-7 w-7 object-contain" />
             </div>
-            <div>
-              <h1 className="text-lg font-semibold text-slate-900">
+            <div className="min-w-0">
+              <h1 className="truncate text-base font-bold text-slate-900 sm:text-lg">
                 Olabisi Onabanjo University
               </h1>
-              <p className="text-xs uppercase tracking-[0.25em] text-blue-600/80">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-blue-600/80">
                 Research Productivity Portal
               </p>
             </div>
           </div>
 
-          <p className="mt-5 text-sm text-slate-500">
+          <p className="mt-5 text-sm leading-relaxed text-slate-500">
             Sign in to manage your research productivity records.
           </p>
 
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            <div className="space-y-2">
+          <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
+            {/* Staff ID */}
+            <div>
               <label
-                className="text-xs font-medium uppercase tracking-[0.2em] text-slate-400"
                 htmlFor="username"
+                className="block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
               >
                 Staff ID
               </label>
@@ -79,17 +81,23 @@ function Login() {
                 name="username"
                 type="text"
                 required
+                autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck="false"
                 value={formData.username}
                 onChange={handleChange}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200/70"
+                /* text-base prevents iOS from zooming in on focus */
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200/70 sm:text-sm"
                 placeholder="OOU/ACA/P.123"
               />
             </div>
 
-            <div className="space-y-2">
+            {/* Password */}
+            <div>
               <label
-                className="text-xs font-medium uppercase tracking-[0.2em] text-slate-400"
                 htmlFor="password"
+                className="block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400"
               >
                 Password
               </label>
@@ -98,34 +106,41 @@ function Login() {
                 name="password"
                 type="password"
                 required
+                autoComplete="current-password"
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200/70"
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200/70 sm:text-sm"
                 placeholder="Enter your password"
               />
             </div>
 
+            {/* Error */}
             {error && (
-              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-600">
+              <div
+                role="alert"
+                className="rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-600"
+              >
                 {error}
               </div>
             )}
 
+            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-2xl bg-blue-600 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-1 w-full rounded-2xl bg-blue-600 py-3.5 text-sm font-semibold text-white transition hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? "Signing in…" : "Sign In"}
             </button>
           </form>
 
+          {/* Footer links */}
           <p className="mt-5 text-center text-xs text-slate-400">
             Need access? Contact the ICT.{" "}
             <button
               type="button"
               onClick={() => navigate("/forgot-password")}
-              className="ml-1 font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+              className="ml-0.5 font-semibold text-blue-600 hover:text-blue-700 hover:underline"
             >
               Forgot password?
             </button>

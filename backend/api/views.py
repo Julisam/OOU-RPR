@@ -22,9 +22,11 @@ from .models import (
     InternationalProfessionalFellowship,
     VisitingProfessorship,
     ResearchAward,
-    JournalIndexStatus,
     EditorialAppointment,
     ResearchGroupMembership,
+    ActiveResearchProject,
+    CompletedResearchProject,
+    PhDThesis,
 )
 from .serializers import (
     ResearchActivitySerializer,
@@ -36,9 +38,11 @@ from .serializers import (
     InternationalProfessionalFellowshipSerializer,
     VisitingProfessorshipSerializer,
     ResearchAwardSerializer,
-    JournalIndexStatusSerializer,
     EditorialAppointmentSerializer,
     ResearchGroupMembershipSerializer,
+    ActiveResearchProjectSerializer,
+    CompletedResearchProjectSerializer,
+    PhDThesisSerializer,
 )
 
 class DepartmentViewSet(viewsets.ReadOnlyModelViewSet):
@@ -252,15 +256,6 @@ class ResearchAwardViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-
-class JournalIndexStatusViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = JournalIndexStatusSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        return JournalIndexStatus.objects.all()
-
-
 class EditorialAppointmentViewSet(viewsets.ModelViewSet):
     serializer_class = EditorialAppointmentSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -290,6 +285,39 @@ class ResearchActivityViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # Users can only access activities from their own records
         return ResearchActivity.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class ActiveResearchProjectViewSet(viewsets.ModelViewSet):
+    serializer_class = ActiveResearchProjectSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return ActiveResearchProject.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class CompletedResearchProjectViewSet(viewsets.ModelViewSet):
+    serializer_class = CompletedResearchProjectSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return CompletedResearchProject.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+class PhDThesisViewSet(viewsets.ModelViewSet):
+    serializer_class = PhDThesisSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return PhDThesis.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)

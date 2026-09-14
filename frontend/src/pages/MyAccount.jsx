@@ -1,125 +1,363 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import api from "../api";
+import { countries } from "../data/countries";
 
+/* ─── Shared class constants ─────────────────────────────────────── */
 const labelClass =
   "block text-xs font-semibold uppercase tracking-[0.2em] text-slate-400 mb-2";
 const inputClass =
-  "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200/70";
+  "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 " +
+  "focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200/70 sm:text-sm";
 const selectClass =
-  "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200/70";
+  "w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-base text-slate-900 " +
+  "focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200/70 sm:text-sm";
+const addButtonClass =
+  "inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 active:scale-[0.98]";
 
-function Modal({ open, onClose, title, children, width = "max-w-lg" }) {
-  if (!open) return null;
+/* ─── Icons ──────────────────────────────────────────────────────── */
+function AddIcon() {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm">
-      <div className={`bg-white rounded-2xl shadow-2xl ${width} w-full mx-4 max-h-[90vh] overflow-y-auto`}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-          <h2 className="text-lg font-bold text-slate-900">{title}</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-2xl leading-none">&times;</button>
-        </div>
-        <div className="px-6 py-4">{children}</div>
-      </div>
-    </div>
+    <svg
+      className="h-4 w-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.5}
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 4.5v15m7.5-7.5h-15"
+      />
+    </svg>
   );
 }
 
 function AcademicCapIcon({ className }) {
   return (
-    <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" />
+    <svg
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5"
+      />
     </svg>
   );
 }
 
 function BeakerIcon({ className }) {
   return (
-    <svg className={className} fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5" />
+    <svg
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5"
+      />
     </svg>
   );
 }
 
+/* ─── Modal ──────────────────────────────────────────────────────── */
+function Modal({ open, onClose, title, children }) {
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 backdrop-blur-sm sm:items-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="modal-title"
+    >
+      {/* Sheet slides up from bottom on mobile, centred on sm+ */}
+      <div className="w-full max-w-lg rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl sm:mx-4 max-h-[90dvh] overflow-y-auto">
+        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+          <h2 id="modal-title" className="text-base font-bold text-slate-900">
+            {title}
+          </h2>
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            aria-label="Close"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+        <div className="px-5 py-5">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Section switcher (top-level tabs) ─────────────────────────── */
 function SectionSwitcher({ tab, setTab }) {
   return (
-    <div className="inline-flex items-center gap-1 rounded-2xl border border-slate-200 bg-slate-50 p-1.5 shadow-inner">
-      {tab === "fellowships" ? (
+    /* Full-width on mobile, inline on sm+ */
+    <div className="flex w-full rounded-2xl border border-slate-200 bg-slate-50 p-1.5 shadow-inner sm:w-auto sm:inline-flex">
+      <button
+        onClick={() => setTab("fellowships")}
+        className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-150 sm:flex-none ${
+          tab === "fellowships"
+            ? "bg-white text-blue-700 shadow-sm ring-1 ring-slate-200"
+            : "text-slate-500 hover:text-slate-800"
+        }`}
+      >
+        <AcademicCapIcon
+          className={`h-4 w-4 ${tab === "fellowships" ? "text-blue-600" : "text-slate-400"}`}
+        />
+        <span className="hidden xs:inline sm:inline">
+          Fellowships &amp; Appointments
+        </span>
+        <span className="xs:hidden sm:hidden">Fellowships</span>
+      </button>
+      <button
+        onClick={() => setTab("research")}
+        className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-150 sm:flex-none ${
+          tab === "research"
+            ? "bg-white text-blue-700 shadow-sm ring-1 ring-slate-200"
+            : "text-slate-500 hover:text-slate-800"
+        }`}
+      >
+        <BeakerIcon
+          className={`h-4 w-4 ${tab === "research" ? "text-blue-600" : "text-slate-400"}`}
+        />
+        Research Profile
+      </button>
+    </div>
+  );
+}
+
+/* ─── Sub-tabs (scrollable on mobile) ───────────────────────────── */
+function SubTabs({ tabs, active, onChange }) {
+  return (
+    <div className="-mx-4 px-4 sm:mx-0 sm:px-0">
+      <div className="flex overflow-x-auto border-b border-slate-200 no-scrollbar">
+        {tabs.map((t) => {
+          const isActive = active === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => onChange(t.id)}
+              className={`relative shrink-0 pb-3 pr-6 text-sm font-semibold transition-colors ${
+                isActive
+                  ? "text-blue-700"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              {t.label}
+              <span
+                className={`absolute inset-x-0 -bottom-px h-0.5 rounded-full transition-all ${isActive ? "bg-blue-600" : "bg-transparent"}`}
+              />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Card list item (mobile-friendly alternative to table rows) ─── */
+function CardRow({ children, onEdit, onDelete }) {
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3.5">
+      <div className="min-w-0 flex-1 space-y-0.5">{children}</div>
+      <div className="flex shrink-0 gap-2">
         <button
-          onClick={() => setTab("fellowships")}
-          className={`flex items-center gap-2.5 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all duration-200 ${
-            tab === "fellowships"
-              ? "bg-white text-blue-700 shadow-sm ring-1 ring-slate-200"
-              : "text-slate-500 hover:text-slate-800"
-          }`}
+          onClick={onEdit}
+          className="rounded-lg border border-blue-100 bg-white px-3 py-1.5 text-xs font-semibold text-blue-600 transition hover:bg-blue-50"
         >
-          <AcademicCapIcon className="h-5 w-5 text-slate-400" /> Fellowships & Appointments
+          Edit
         </button>
-      ) : (
         <button
-          onClick={() => setTab("research")}
-          className={`flex items-center gap-2.5 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all duration-200 ${
-            tab === "research"
-              ? "bg-white text-blue-700 shadow-sm ring-1 ring-slate-200"
-              : "text-slate-500 hover:text-slate-800"
-          }`}
+          onClick={onDelete}
+          className="rounded-lg border border-rose-100 bg-white px-3 py-1.5 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
         >
-          <BeakerIcon className="h-5 w-5 text-slate-400" /> Research Profile
+          Delete
         </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Empty state ────────────────────────────────────────────────── */
+function EmptyState({ label }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center">
+      <p className="text-sm text-slate-400">{label || "No entries yet."}</p>
+    </div>
+  );
+}
+
+/* ─── Form field helper ──────────────────────────────────────────── */
+function Field({ label, children }) {
+  return (
+    <div>
+      <label className={labelClass}>{label}</label>
+      {children}
+    </div>
+  );
+}
+
+/* ─── Searchable country select ──────────────────────────────────── */
+/**
+ * Props:
+ *   value          – currently selected country string
+ *   onChange       – (countryString) => void
+ *   placeholder    – optional placeholder text
+ *   id             – optional id for the input (for label association)
+ */
+function CountrySelect({
+  value,
+  onChange,
+  placeholder = "Search country…",
+  id,
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+
+  // When the selected value changes from outside (e.g. editing an existing record),
+  // keep the display in sync without forcing the dropdown open.
+  const displayValue = open ? query : value || "";
+
+  const filtered = query.trim()
+    ? countries.filter((c) => c.toLowerCase().includes(query.toLowerCase()))
+    : countries;
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (!containerRef.current?.contains(e.target)) {
+        setOpen(false);
+        // If the user typed something but didn't pick — reset to current value
+        setQuery("");
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleInputChange = (e) => {
+    setQuery(e.target.value);
+    setOpen(true);
+    // If the user clears the field, also clear the selected value
+    if (e.target.value === "") onChange("");
+  };
+
+  const handleSelect = (country) => {
+    onChange(country);
+    setQuery("");
+    setOpen(false);
+  };
+
+  const handleFocus = () => {
+    setQuery("");
+    setOpen(true);
+  };
+
+  return (
+    <div ref={containerRef} className="relative">
+      {/* Text input — shows selected value when closed, search query when open */}
+      <div className="relative">
+        <input
+          id={id}
+          type="text"
+          autoComplete="off"
+          value={open ? query : value || ""}
+          onChange={handleInputChange}
+          onFocus={handleFocus}
+          placeholder={value ? value : placeholder}
+          className={inputClass + " pr-9" /* room for chevron */}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-autocomplete="list"
+        />
+        {/* Chevron icon */}
+        <span
+          className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-slate-400"
+          aria-hidden="true"
+        >
+          <svg
+            className={`h-4 w-4 transition-transform duration-150 ${open ? "rotate-180" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        </span>
+      </div>
+
+      {/* Dropdown list */}
+      {open && (
+        <ul
+          role="listbox"
+          className="absolute left-0 right-0 top-full z-50 mt-1.5 max-h-56 overflow-y-auto rounded-2xl border border-slate-200 bg-white py-1.5 shadow-xl"
+        >
+          {filtered.length === 0 ? (
+            <li className="px-4 py-3 text-sm text-slate-400">
+              No countries match "{query}"
+            </li>
+          ) : (
+            filtered.map((country) => (
+              <li
+                key={country}
+                role="option"
+                aria-selected={country === value}
+                onMouseDown={(e) => {
+                  // mousedown fires before blur, preventing the outside-click handler
+                  // from closing the dropdown before we register the selection
+                  e.preventDefault();
+                  handleSelect(country);
+                }}
+                className={`cursor-pointer px-4 py-2.5 text-sm transition-colors ${
+                  country === value
+                    ? "bg-blue-600 font-semibold text-white"
+                    : "text-slate-700 hover:bg-slate-100"
+                }`}
+              >
+                {country}
+              </li>
+            ))
+          )}
+        </ul>
       )}
     </div>
   );
 }
 
-function SubTabs({ tabs, active, onChange }) {
-  return (
-    <div className="flex flex-wrap gap-x-7 gap-y-2 border-b border-slate-200">
-      {tabs.map((t) => {
-        const isActive = active === t.id;
-        return (
-          <button
-            key={t.id}
-            onClick={() => onChange(t.id)}
-            className={`relative pb-3 text-sm font-semibold transition-colors ${
-              isActive ? "text-blue-700" : "text-slate-500 hover:text-slate-800"
-            }`}
-          >
-            {t.label}
-            <span
-              className={`absolute inset-x-0 -bottom-px h-0.5 rounded-full transition-all ${
-                isActive ? "bg-blue-600" : "bg-transparent"
-              }`}
-            />
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-const addButtonClass =
-  "inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700";
-
-function AddIcon() {
-  return (
-    <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-    </svg>
-  );
-}
-
-const fellowshipTabs = [
-  { id: "national", label: "National Academies" },
-  { id: "international", label: "International Bodies" },
-  { id: "visiting", label: "Visiting Professorships" },
-];
-
-const researchTabs = [
-  { id: "awards", label: "Awards" },
-  { id: "editorial", label: "Editorial" },
-  { id: "groups", label: "Research Groups" },
-];
-
+/* ════════════════════════════════════════════════════════════════════
+   FELLOWSHIP SECTION
+   ════════════════════════════════════════════════════════════════════ */
 function FellowshipSection() {
   const [subTab, setSubTab] = useState("national");
   const [data, setData] = useState([]);
@@ -130,8 +368,12 @@ function FellowshipSection() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const endpoints = { national: "national-academy-fellowships", international: "international-professional-fellowships", visiting: "visiting-professorships" };
-  const endpoint = endpoints[subTab];
+  const endpointMap = {
+    national: "national-academy-fellowships/",
+    international: "international-professional-fellowships/",
+    visiting: "visiting-professorships/",
+  };
+  const endpoint = endpointMap[subTab];
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -145,220 +387,368 @@ function FellowshipSection() {
     }
   }, [endpoint]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-  const handleSave = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
+  const setField = (e) =>
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const openAdd = () => {
+    setEditing(null);
+    setForm({});
     setError("");
-    try {
-      if (editing) {
-        await api.put(`${endpoint}/${editing}/`, form);
-      } else {
-        await api.post(endpoint, form);
-      }
-      setShowModal(false);
-      setEditing(null);
-      setForm({});
-      fetchData();
-    } catch (e) {
-      setError(e.response?.data?.detail || "Save failed");
-    } finally {
-      setSubmitting(false);
-    }
+    setShowModal(true);
   };
-
-  const handleEdit = (item) => {
+  const openEdit = (item) => {
     setEditing(item.id);
     setForm({ ...item });
+    setError("");
     setShowModal(true);
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this entry?")) return;
     try {
-      await api.delete(`${endpoint}/${id}/`);
+      await api.delete(`${endpoint}${id}/`);
       fetchData();
     } catch (e) {
       console.error(e);
     }
   };
 
-  const renderFields = () => {
-    if (subTab === "national") {
-      return (
-        <>
-          <div className="mb-4">
-            <label className={labelClass}>Academy Name</label>
-            <input name="academy_name" value={form.academy_name || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={inputClass} />
-          </div>
-          <div className="mb-4">
-            <label className={labelClass}>Academy Type</label>
-            <select name="academy_type" value={form.academy_type || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={selectClass}>
-              <option value="national_academy_of_science">National Academy of Science</option>
-              <option value="national_academy_of_engineering">National Academy of Engineering</option>
-              <option value="national_academy_of_medicine">National Academy of Medicine</option>
-              <option value="national_academy_of_education">National Academy of Education</option>
-              <option value="national_academy_of_letters_arts">National Academy of Letters/Arts</option>
-              <option value="other_national_scholarly_academy">Other recognised national scholarly academy</option>
-            </select>
-          </div>
-          <div className="mb-4">
-            <label className={labelClass}>Year Elected</label>
-            <input type="number" name="year_elected" value={form.year_elected || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={inputClass} />
-          </div>
-          <div className="mb-4">
-            <label className={labelClass}>Discipline</label>
-            <input name="discipline" value={form.discipline || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={inputClass} />
-          </div>
-        </>
-      );
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError("");
+    try {
+      const submissionForm =
+        form.academy_type === "Other"
+          ? { ...form, academy_type: form.custom_academy_type }
+          : form;
+      editing
+        ? await api.put(`${endpoint}${editing}/`, submissionForm)
+        : await api.post(endpoint, submissionForm);
+      setShowModal(false);
+      setEditing(null);
+      setForm({});
+      fetchData();
+    } catch (e) {
+      setError(e.response?.data?.detail || "Save failed. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
-    if (subTab === "international") {
-      return (
-        <>
-          <div className="mb-4">
-            <label className={labelClass}>Body Name</label>
-            <input name="body_name" value={form.body_name || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={inputClass} />
-          </div>
-          <div className="mb-4">
-            <label className={labelClass}>Country</label>
-            <input name="country" value={form.country || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={inputClass} />
-          </div>
-          <div className="mb-4">
-            <label className={labelClass}>Title</label>
-            <input name="title" value={form.title || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={inputClass} />
-          </div>
-          <div className="mb-4">
-            <label className={labelClass}>Year Elected</label>
-            <input type="number" name="year_elected" value={form.year_elected || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={inputClass} />
-          </div>
-        </>
-      );
-    }
-    return (
-      <>
-        <div className="mb-4">
-          <label className={labelClass}>Host Institution</label>
-          <input name="host_institution" value={form.host_institution || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={inputClass} />
-        </div>
-        <div className="mb-4">
-          <label className={labelClass}>Country</label>
-          <input name="country" value={form.country || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={inputClass} />
-        </div>
-        <div className="mb-4">
-          <label className={labelClass}>Title</label>
-          <select name="title" value={form.title || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={selectClass}>
-            <option value="visiting_professor">Visiting Professor</option>
-            <option value="visiting_research_professor">Visiting Research Professor</option>
-            <option value="visiting_scholar">Visiting Scholar</option>
-          </select>
-        </div>
-        <div className="mb-4">
-          <label className={labelClass}>Year Appointed</label>
-          <input type="number" name="year_appointed" value={form.year_appointed || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={inputClass} />
-        </div>
-        <div className="mb-4">
-          <label className={labelClass}>Duration</label>
-          <input name="duration" value={form.duration || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={inputClass} />
-        </div>
-      </>
-    );
   };
 
-  const renderTable = () => {
-    if (subTab === "national") {
-      return data.map((item, i) => (
-        <tr key={item.id} className="border-t border-slate-200">
-          <td className="px-4 py-3 text-slate-600">{i + 1}</td>
-          <td className="px-4 py-3 text-slate-900">{item.academy_name}</td>
-          <td className="px-4 py-3 text-slate-600">{item.academy_type?.replace(/_/g, ' ')}</td>
-          <td className="px-4 py-3 text-slate-600">{item.year_elected}</td>
-          <td className="px-4 py-3 text-slate-600">{item.discipline}</td>
-          <td className="px-4 py-3">
-            <button onClick={() => handleEdit(item)} className="text-blue-600 hover:text-blue-800 text-sm mr-3">Edit</button>
-            <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
-          </td>
-        </tr>
+  const renderFormFields = () => {
+    if (subTab === "national")
+      return (
+        <>
+          <Field label="Name of National Academy">
+            <input
+              name="academy_name"
+              value={form.academy_name || ""}
+              onChange={setField}
+              className={inputClass}
+              required
+            />
+          </Field>
+          <Field label="Academy Type">
+            <select
+              name="academy_type"
+              value={form.academy_type || ""}
+              onChange={setField}
+              className={selectClass}
+              required
+            >
+              <option value="">Select type</option>
+              <option value="National Academy of Science">
+                National Academy of Science
+              </option>
+              <option value="National Academy of Engineering">
+                National Academy of Engineering
+              </option>
+              <option value="National Academy of Medicine">
+                National Academy of Medicine
+              </option>
+              <option value="National Academy of Education">
+                National Academy of Education
+              </option>
+              <option value="National Academy of Letters/Arts">
+                National Academy of Letters/Arts
+              </option>
+              <option value="Other">
+                Other recognised national scholarly academy
+              </option>
+            </select>
+          </Field>
+          {form.academy_type === "Other" && (
+            <Field label="Specify Academy Type">
+              <input
+                name="custom_academy_type"
+                value={form.custom_academy_type || ""}
+                onChange={setField}
+                className={inputClass}
+                placeholder="Enter academy type"
+              />
+            </Field>
+          )}
+          <Field label="Year Elected/Admitted as fellow">
+            <input
+              type="number"
+              name="year_elected"
+              min="1900"
+              max="2200"
+              value={form.year_elected || ""}
+              onChange={setField}
+              className={inputClass}
+              required
+            />
+          </Field>
+          <Field label="Discipline Fellowship was Awarded">
+            <input
+              name="discipline"
+              value={form.discipline || ""}
+              onChange={setField}
+              className={inputClass}
+              required
+            />
+          </Field>
+        </>
+      );
+    if (subTab === "international")
+      return (
+        <>
+          <Field label="Name of International/Professional Body" required>
+            <input
+              name="body_name"
+              value={form.body_name || ""}
+              onChange={setField}
+              className={inputClass}
+              required
+            />
+          </Field>
+          <Field label="Country/International jurisdiction" required>
+            <CountrySelect
+              value={form.country || ""}
+              onChange={(country) => setForm((prev) => ({ ...prev, country }))}
+            />
+          </Field>
+          <Field label="Title/Designation of Fellowship">
+            <input
+              name="title"
+              value={form.title || ""}
+              onChange={setField}
+              className={inputClass}
+              required
+            />
+          </Field>
+          <Field label="Year Elected/Admitted as fellow">
+            <input
+              type="number"
+              name="year_elected"
+              min="1900"
+              max="2200"
+              value={form.year_elected || ""}
+              onChange={setField}
+              className={inputClass}
+              required
+            />
+          </Field>
+        </>
+      );
+    if (subTab === "visiting")
+      return (
+        <>
+          <Field label="Host Institution">
+            <input
+              name="host_institution"
+              value={form.host_institution || ""}
+              onChange={setField}
+              className={inputClass}
+              required
+            />
+          </Field>
+          <Field label="Country" required>
+            <CountrySelect
+              value={form.country || ""}
+              onChange={(country) => setForm((prev) => ({ ...prev, country }))}
+            />
+          </Field>
+          <Field label="Title" required>
+            <select
+              name="title"
+              value={form.title || ""}
+              onChange={setField}
+              className={selectClass}
+              required
+            >
+              <option value="">Select title</option>
+              <option value="visiting_professor">Visiting Professor</option>
+              <option value="visiting_research_professor">
+                Visiting Research Professor
+              </option>
+              <option value="visiting_scholar">Visiting Scholar</option>
+            </select>
+          </Field>
+          <Field label="Year Appointed" required>
+            <input
+              type="number"
+              name="year_appointed"
+              min="1900"
+              max="2200"
+              value={form.year_appointed || ""}
+              onChange={setField}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Duration">
+            <div className="flex gap-2">
+              <input
+                type="number"
+                name="duration_value"
+                min="1"
+                value={form.duration_value || ""}
+                onChange={setField}
+                className={`${inputClass} flex-1`}
+                placeholder="e.g. 6"
+                required
+              />
+
+              <select
+                name="duration_unit"
+                value={form.duration_unit || ""}
+                onChange={setField}
+                className={`${selectClass} flex-1`}
+                required
+              >
+                <option value="">Select unit</option>
+                <option value="weeks">Weeks</option>
+                <option value="months">Months</option>
+                <option value="years">Years</option>
+              </select>
+            </div>
+          </Field>
+        </>
+      );
+  };
+
+  const renderCards = () => {
+    if (data.length === 0)
+      return <EmptyState label="No fellowship entries yet. Add one above." />;
+    if (subTab === "national")
+      return data.map((item) => (
+        <CardRow
+          key={item.id}
+          onEdit={() => openEdit(item)}
+          onDelete={() => handleDelete(item.id)}
+        >
+          <p className="font-semibold text-slate-900">{item.academy_name}</p>
+          <p className="text-xs text-slate-500">
+            {item.academy_type?.replace(/_/g, " ")} · {item.year_elected}
+          </p>
+          {item.discipline && (
+            <p className="text-xs text-slate-400">{item.discipline}</p>
+          )}
+        </CardRow>
       ));
-    }
-    if (subTab === "international") {
-      return data.map((item, i) => (
-        <tr key={item.id} className="border-t border-slate-200">
-          <td className="px-4 py-3 text-slate-600">{i + 1}</td>
-          <td className="px-4 py-3 text-slate-900">{item.body_name}</td>
-          <td className="px-4 py-3 text-slate-600">{item.country}</td>
-          <td className="px-4 py-3 text-slate-600">{item.title}</td>
-          <td className="px-4 py-3 text-slate-600">{item.year_elected}</td>
-          <td className="px-4 py-3">
-            <button onClick={() => handleEdit(item)} className="text-blue-600 hover:text-blue-800 text-sm mr-3">Edit</button>
-            <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
-          </td>
-        </tr>
+    if (subTab === "international")
+      return data.map((item) => (
+        <CardRow
+          key={item.id}
+          onEdit={() => openEdit(item)}
+          onDelete={() => handleDelete(item.id)}
+        >
+          <p className="font-semibold text-slate-900">{item.body_name}</p>
+          <p className="text-xs text-slate-500">
+            {item.country} · {item.year_elected}
+          </p>
+          {item.title && <p className="text-xs text-slate-400">{item.title}</p>}
+        </CardRow>
       ));
-    }
-    return data.map((item, i) => (
-      <tr key={item.id} className="border-t border-slate-200">
-        <td className="px-4 py-3 text-slate-600">{i + 1}</td>
-        <td className="px-4 py-3 text-slate-900">{item.host_institution}</td>
-        <td className="px-4 py-3 text-slate-600">{item.country}</td>
-        <td className="px-4 py-3 text-slate-600">{item.title?.replace(/_/g, ' ')}</td>
-        <td className="px-4 py-3 text-slate-600">{item.year_appointed}</td>
-        <td className="px-4 py-3 text-slate-600">{item.duration}</td>
-        <td className="px-4 py-3">
-          <button onClick={() => handleEdit(item)} className="text-blue-600 hover:text-blue-800 text-sm mr-3">Edit</button>
-          <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-800 text-sm">Delete</button>
-        </td>
-      </tr>
-    ));
+    if (subTab === "visiting")
+      return data.map((item) => (
+        <CardRow
+          key={item.id}
+          onEdit={() => openEdit(item)}
+          onDelete={() => handleDelete(item.id)}
+        >
+          <p className="font-semibold text-slate-900">
+            {item.host_institution}
+          </p>
+          <p className="text-xs text-slate-500">
+            {item.country} · {item.year_appointed}
+          </p>
+          {item.title && (
+            <p className="text-xs text-slate-400">
+              {item.title?.replace(/_/g, " ")} · {item.duration}
+            </p>
+          )}
+        </CardRow>
+      ));
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className="mt-6 space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-lg font-bold text-slate-900">
-            {subTab === "national" ? "National Academy Fellowships" : subTab === "international" ? "International Professional Fellowships" : "Visiting Professorships"}
+          <h3 className="text-base font-bold text-slate-900">
+            Fellowships &amp; Appointments
           </h3>
-          <p className="text-sm text-slate-500 mt-1">Manage your fellowships and appointments.</p>
+          <p className="text-sm text-slate-500">
+            Manage your fellowships and academic appointments.
+          </p>
         </div>
-        <button onClick={() => { setEditing(null); setForm({}); setShowModal(true); }} className={addButtonClass}>
+        <button onClick={openAdd} className={addButtonClass}>
           <AddIcon /> Add New
         </button>
       </div>
-      <SubTabs tabs={fellowshipTabs} active={subTab} onChange={setSubTab} />
-      {loading ? <div className="text-sm text-slate-500">Loading...</div> : (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
-              <tr>
-                <th className="px-4 py-3">S/N</th>
-                {subTab === "national" ? <th className="px-4 py-3">Academy</th> : null}
-                {subTab === "national" ? <th className="px-4 py-3">Type</th> : null}
-                {subTab === "international" ? <th className="px-4 py-3">Body</th> : null}
-                {subTab === "international" ? <th className="px-4 py-3">Country</th> : null}
-                {subTab === "visiting" ? <th className="px-4 py-3">Institution</th> : null}
-                {subTab === "visiting" ? <th className="px-4 py-3">Country</th> : null}
-                {subTab === "visiting" ? <th className="px-4 py-3">Title</th> : null}
-                <th className="px-4 py-3">Year</th>
-                <th className="px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.length === 0 && <tr><td colSpan={10} className="px-4 py-4 text-slate-500">No entries yet.</td></tr>}
-              {renderTable()}
-            </tbody>
-          </table>
-        </div>
+
+      <SubTabs
+        tabs={[
+          { id: "national", label: "National Academy" },
+          { id: "international", label: "International Bodies" },
+          { id: "visiting", label: "Visiting Professorships" },
+        ]}
+        active={subTab}
+        onChange={(id) => {
+          setSubTab(id);
+        }}
+      />
+
+      {loading ? (
+        <p className="py-4 text-sm text-slate-500">Loading…</p>
+      ) : (
+        <div className="space-y-3">{renderCards()}</div>
       )}
-      <button onClick={() => { setEditing(null); setForm({}); setShowModal(true); }} className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700">Add New</button>
-      <Modal open={showModal} onClose={() => setShowModal(false)} title={editing ? "Edit Entry" : "Add Entry"}>
-        <form onSubmit={handleSave} className="space-y-2">
-          {renderFields()}
-          {error && <div className="text-red-500 text-sm">{error}</div>}
-          <div className="flex gap-3 pt-2">
-            <button type="submit" disabled={submitting} className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold">{submitting ? "Saving..." : "Save"}</button>
-            <button type="button" onClick={() => setShowModal(false)} className="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-semibold">Cancel</button>
+
+      <Modal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title={editing ? "Edit Entry" : "Add Entry"}
+      >
+        <form onSubmit={handleSave} className="space-y-4">
+          {renderFormFields()}
+          {error && (
+            <p role="alert" className="text-sm text-rose-600">
+              {error}
+            </p>
+          )}
+          <div className="flex gap-2.5 pt-2">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex-1 rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {submitting ? "Saving…" : "Save"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="flex-1 rounded-xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+            >
+              Cancel
+            </button>
           </div>
         </form>
       </Modal>
@@ -366,6 +756,9 @@ function FellowshipSection() {
   );
 }
 
+/* ════════════════════════════════════════════════════════════════════
+   RESEARCH SECTION
+   ════════════════════════════════════════════════════════════════════ */
 function ResearchSection() {
   const [subTab, setSubTab] = useState("awards");
   const [data, setData] = useState([]);
@@ -375,20 +768,19 @@ function ResearchSection() {
   const [form, setForm] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [indexStatuses, setIndexStatuses] = useState([]);
 
-  const endpoints = { awards: "research-awards", editorial: "editorial-appointments", groups: "research-group-memberships" };
-  const endpoint = endpoints[subTab];
+  const endpointMap = {
+    awards: "research-awards/",
+    editorial: "editorial-appointments/",
+    groups: "research-group-memberships/",
+  };
+  const endpoint = endpointMap[subTab];
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const { data: res } = await api.get(endpoint);
       setData(res);
-      if (subTab === "editorial") {
-        const { data: statuses } = await api.get("journal-index-statuses/");
-        setIndexStatuses(statuses);
-      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -396,7 +788,40 @@ function ResearchSection() {
     }
   }, [endpoint, subTab]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const setField = (e) =>
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const openAdd = () => {
+    setEditing(null);
+    setForm({});
+    setError("");
+    setShowModal(true);
+  };
+  const openEdit = (item) => {
+    setEditing(item.id);
+    setForm({
+      ...item,
+      indexing_status: Array.isArray(item.indexing_status)
+        ? item.indexing_status
+        : [],
+    });
+    setError("");
+    setShowModal(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this entry?")) return;
+    try {
+      await api.delete(`${endpoint}${id}/`);
+      fetchData();
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -404,172 +829,386 @@ function ResearchSection() {
     setError("");
     try {
       const payload = { ...form };
-      if (subTab === "editorial" && payload.indexing_status) {
-        payload.indexing_status = payload.indexing_status.map(Number);
+      if (subTab === "editorial") {
+        payload.indexing_status = Array.isArray(payload.indexing_status)
+          ? payload.indexing_status
+          : [];
       } else {
         delete payload.indexing_status;
       }
-      if (editing) {
-        await api.put(`${endpoint}/${editing}/`, payload);
-      } else {
-        await api.post(endpoint, payload);
-      }
+      editing
+        ? await api.put(`${endpoint}${editing}/`, payload)
+        : await api.post(endpoint, payload);
       setShowModal(false);
       setEditing(null);
       setForm({});
       fetchData();
     } catch (e) {
-      setError(e.response?.data?.detail || "Save failed");
+      const data = e.response?.data;
+      if (data && typeof data === "object") {
+        const messages = Object.entries(data)
+          .map(([field, msgs]) =>
+            Array.isArray(msgs)
+              ? `${field}: ${msgs.join(" ")}`
+              : `${field}: ${msgs}`,
+          )
+          .join("  |  ");
+        setError(messages || "Save failed. Please try again.");
+      } else {
+        setError("Save failed. Please try again.");
+      }
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleEdit = (item) => {
-    setEditing(item.id);
-    setForm({ ...item, indexing_status: item.indexing_status?.map((s) => s.id) || [] });
-    setShowModal(true);
+  const toggleIndexStatus = (label) => {
+    const current = Array.isArray(form.indexing_status)
+      ? form.indexing_status
+      : [];
+    setForm((prev) => ({
+      ...prev,
+      indexing_status: current.includes(label)
+        ? current.filter((x) => x !== label)
+        : [...current, label],
+    }));
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this entry?")) return;
-    try {
-      await api.delete(`${endpoint}/${id}/`);
-      fetchData();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const renderFields = () => {
-    if (subTab === "awards") {
+  const renderFormFields = () => {
+    if (subTab === "awards")
       return (
         <>
-          <div className="mb-4"><label className={labelClass}>Award Name</label><input name="award_name" value={form.award_name || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={inputClass} /></div>
-          <div className="mb-4"><label className={labelClass}>Organization</label><input name="awarding_organization" value={form.awarding_organization || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={inputClass} /></div>
-          <div className="mb-4"><label className={labelClass}>Country</label><input name="country" value={form.country || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={inputClass} /></div>
-          <div className="mb-4"><label className={labelClass}>Year Received</label><input type="number" name="year_received" value={form.year_received || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={inputClass} /></div>
-          <div className="mb-4"><label className={labelClass}>Category</label><input name="award_category" value={form.award_category || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={inputClass} /></div>
+          <Field label="Name of Award/Prize" required>
+            <input
+              name="award_name"
+              value={form.award_name || ""}
+              onChange={setField}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Awarding Organisation/Institution" required>
+            <input
+              name="awarding_organization"
+              value={form.awarding_organization || ""}
+              onChange={setField}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Country" required>
+            <CountrySelect
+              value={form.country || ""}
+              onChange={(country) => setForm((prev) => ({ ...prev, country }))}
+            />
+          </Field>
+          <Field label="Year Received" required>
+            <input
+              type="number"
+              name="year_received"
+              value={form.year_received || ""}
+              min="1900"
+              max="2200"
+              onChange={setField}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Award Category/Type" required>
+            <input
+              name="award_category"
+              value={form.award_category || ""}
+              onChange={setField}
+              className={inputClass}
+            />
+          </Field>
         </>
       );
-    }
-    if (subTab === "editorial") {
+    if (subTab === "editorial")
       return (
         <>
-          <div className="mb-4"><label className={labelClass}>Journal Name</label><input name="journal_name" value={form.journal_name || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={inputClass} /></div>
-          <div className="mb-4"><label className={labelClass}>Publisher</label><input name="publisher" value={form.publisher || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={inputClass} /></div>
-          <div className="mb-4"><label className={labelClass}>Country</label><input name="country" value={form.country || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={inputClass} /></div>
-          <div className="mb-4"><label className={labelClass}>Position</label><select name="position" value={form.position || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={selectClass}>
-            <option value="editor_in_chief">Editor-in-Chief</option><option value="managing_editor">Managing Editor</option><option value="associate_deputy_editor">Associate/Deputy Editor</option><option value="section_handling_editor">Section/Handling Editor</option><option value="editorial_board_member">Editorial Board Member</option><option value="guest_editor">Guest Editor</option><option value="series_editor">Series Editor</option><option value="other_editor">Other</option>
-          </select></div>
-          <div className="mb-4"><label className={labelClass}>Indexing Status</label><div className="space-y-2">{indexStatuses.map((s) => (
-            <label key={s.id} className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={(form.indexing_status || []).includes(s.id)} onChange={(e) => { const ids = e.target.checked ? [...(form.indexing_status || []), s.id] : (form.indexing_status || []).filter((x) => x !== s.id); setForm({ ...form, indexing_status: ids }); }} className="rounded" /><span>{s.name}</span></label>
-          ))}</div></div>
+          <Field label="Name of Journal/Publication" required>
+            <input
+              name="journal_name"
+              value={form.journal_name || ""}
+              onChange={setField}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Publisher/Publishing Organization" required>
+            <input
+              name="publisher"
+              value={form.publisher || ""}
+              onChange={setField}
+              className={inputClass}
+            />
+          </Field>
+          <Field label="Country" required>
+            <CountrySelect
+              value={form.country || ""}
+              onChange={(country) => setForm((prev) => ({ ...prev, country }))}
+            />
+          </Field>
+          <Field label="Editorial Position" required>
+            <select
+              name="position"
+              value={form.position || ""}
+              onChange={setField}
+              className={selectClass}
+            >
+              <option value="">Select position</option>
+              <option value="Editor-in-Chief">Editor-in-Chief</option>
+              <option value="Managing Editor">Managing Editor</option>
+              <option value="Associate/Deputy Editor">
+                Associate/Deputy Editor
+              </option>
+              <option value="Section/Handling Editor">
+                Section/Handling Editor
+              </option>
+              <option value="Editorial Board Member">
+                Editorial Board Member
+              </option>
+              <option value="Guest Editor">Guest Editor</option>
+              <option value="Series Editor">Series Editor</option>
+              <option value="Other">Other</option>
+            </select>
+          </Field>
+          <Field label="Journal Indexing Status">
+            {[
+              "Scopus",
+              "Web of Science",
+              "PubMed/MEDLINE",
+              "African Journals Online (AJOL)",
+              "ERIC",
+              "Other recognised index",
+              "Not indexed",
+            ].map((label) => {
+              const checked = Array.isArray(form.indexing_status)
+                ? form.indexing_status.includes(label)
+                : false;
+              return (
+                <label
+                  key={label}
+                  className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 px-3 py-2.5 transition hover:bg-slate-50"
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleIndexStatus(label)}
+                    className="h-4 w-4 rounded text-blue-600 accent-blue-600"
+                  />
+                  <span className="text-sm text-slate-700">{label}</span>
+                </label>
+              );
+            })}
+          </Field>
         </>
       );
-    }
     return (
       <>
-        <div className="mb-4"><label className={labelClass}>Group Name</label><input name="group_name" value={form.group_name || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={inputClass} /></div>
-        <div className="mb-4"><label className={labelClass}>Group Type</label><select name="group_type" value={form.group_type || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={selectClass}>
-          <option value="oou_research_cluster">OOU Research Cluster</option><option value="oou_research_centre">OOU Research Centre/Institute</option><option value="departmental_research_group">Departmental Research Group</option><option value="faculty_research_group">Faculty Research Group</option><option value="national_research_group">National Research Group/Network</option><option value="international_research_group">International Research Group/Network</option><option value="interdisciplinary_research_group">Interdisciplinary Research Group</option><option value="other_research_group">Other</option>
-        </select></div>
-        <div className="mb-4"><label className={labelClass}>Research Area</label><input name="research_area" value={form.research_area || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={inputClass} /></div>
-        <div className="mb-4"><label className={labelClass}>Role</label><select name="role" value={form.role || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={selectClass}>
-          <option value="coordinator">Coordinator/Leader</option><option value="co_coordinator">Co-Coordinator</option><option value="member">Member</option><option value="research_associate">Research Associate</option><option value="other_role">Other</option>
-        </select></div>
-        <div className="mb-4"><label className={labelClass}>Status</label><select name="status" value={form.status || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={selectClass}>
-          <option value="active">Active</option><option value="inactive">Inactive</option><option value="newly_established">Newly established</option><option value="under_development">Under development</option>
-        </select></div>
-        <div className="mb-4"><label className={labelClass}>Number of Members</label><input type="number" name="number_of_members" value={form.number_of_members || ""} onChange={(e) => setForm({ ...form, [e.target.name]: e.target.value })} className={inputClass} /></div>
+        <Field label="Name of Research Group/Cluster" required>
+          <input
+            name="group_name"
+            value={form.group_name || ""}
+            onChange={setField}
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Type of Research Group/Cluster" required>
+          <select
+            name="group_type"
+            value={form.group_type || ""}
+            onChange={setField}
+            className={selectClass}
+          >
+            <option value="">Select type</option>
+            <option value="OOU Research Cluster">OOU Research Cluster</option>
+            <option value="OOU Research Centre/Institute">
+              OOU Research Centre/Institute
+            </option>
+            <option value="Departmental Research Group">
+              Departmental Research Group
+            </option>
+            <option value="Faculty Research Group">
+              Faculty Research Group
+            </option>
+            <option value="National Research Group/Network">
+              National Research Group/Network
+            </option>
+            <option value="International Research Group/Network">
+              International Research Group/Network
+            </option>
+            <option value="Interdisciplinary Research Group">
+              Interdisciplinary Research Group
+            </option>
+            <option value="Other Research Group">Other Research Group</option>
+          </select>
+        </Field>
+        <Field label="Research Area" required>
+          <input
+            name="research_area"
+            value={form.research_area || ""}
+            onChange={setField}
+            className={inputClass}
+          />
+        </Field>
+        <Field label="Role" required>
+          <select
+            name="role"
+            value={form.role || ""}
+            onChange={setField}
+            className={selectClass}
+          >
+            <option value="">Select role</option>
+            <option value="Coordinator/Leader">Coordinator/Leader</option>
+            <option value="Co-Coordinator">Co-Coordinator</option>
+            <option value="Member">Member</option>
+            <option value="Research Associate">Research Associate</option>
+            <option value="Other">Other</option>
+          </select>
+        </Field>
+        <Field label="Status" required>
+          <select
+            name="status"
+            value={form.status || ""}
+            onChange={setField}
+            className={selectClass}
+          >
+            <option value="">Select status</option>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+            <option value="Newly established">Newly established</option>
+            <option value="Under development">Under development</option>
+          </select>
+        </Field>
+        <Field label="Number of Members">
+          <input
+            type="number"
+            name="number_of_members"
+            value={form.number_of_members || ""}
+            onChange={setField}
+            className={inputClass}
+          />
+        </Field>
       </>
     );
   };
 
-  const renderTable = () => {
-    if (subTab === "awards") {
-      return data.map((item, i) => (
-        <tr key={item.id} className="border-t border-slate-200">
-          <td className="px-4 py-3 text-slate-600">{i + 1}</td>
-          <td className="px-4 py-3 text-slate-900">{item.award_name}</td>
-          <td className="px-4 py-3 text-slate-600">{item.awarding_organization}</td>
-          <td className="px-4 py-3 text-slate-600">{item.country}</td>
-          <td className="px-4 py-3 text-slate-600">{item.year_received}</td>
-          <td className="px-4 py-3 text-slate-600">{item.award_category}</td>
-          <td className="px-4 py-3"><button onClick={() => handleEdit(item)} className="text-blue-600 hover:text-blue-800 text-sm mr-3">Edit</button><button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-800 text-sm">Delete</button></td>
-        </tr>
+  const renderCards = () => {
+    if (data.length === 0)
+      return <EmptyState label="No entries yet. Add one above." />;
+    if (subTab === "awards")
+      return data.map((item) => (
+        <CardRow
+          key={item.id}
+          onEdit={() => openEdit(item)}
+          onDelete={() => handleDelete(item.id)}
+        >
+          <p className="font-semibold text-slate-900">{item.award_name}</p>
+          <p className="text-xs text-slate-500">
+            {item.awarding_organization} · {item.country} · {item.year_received}
+          </p>
+          {item.award_category && (
+            <p className="text-xs text-slate-400">{item.award_category}</p>
+          )}
+        </CardRow>
       ));
-    }
-    if (subTab === "editorial") {
-      return data.map((item, i) => (
-        <tr key={item.id} className="border-t border-slate-200">
-          <td className="px-4 py-3 text-slate-600">{i + 1}</td>
-          <td className="px-4 py-3 text-slate-900">{item.journal_name}</td>
-          <td className="px-4 py-3 text-slate-600">{item.publisher}</td>
-          <td className="px-4 py-3 text-slate-600">{item.country}</td>
-          <td className="px-4 py-3 text-slate-600">{item.position?.replace(/_/g, ' ')}</td>
-          <td className="px-4 py-3 text-slate-600">{item.indexing_status?.map((s) => s.name).join(', ') || '—'}</td>
-          <td className="px-4 py-3"><button onClick={() => handleEdit(item)} className="text-blue-600 hover:text-blue-800 text-sm mr-3">Edit</button><button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-800 text-sm">Delete</button></td>
-        </tr>
+    if (subTab === "editorial")
+      return data.map((item) => (
+        <CardRow
+          key={item.id}
+          onEdit={() => openEdit(item)}
+          onDelete={() => handleDelete(item.id)}
+        >
+          <p className="font-semibold text-slate-900">{item.journal_name}</p>
+          <p className="text-xs text-slate-500">
+            {item.publisher} · {item.country}
+          </p>
+          <p className="text-xs text-slate-400">
+            {item.position?.replace(/_/g, " ")}
+          </p>
+          {item.indexing_status?.length > 0 && (
+            <p className="text-xs text-slate-400">
+              {item.indexing_status.join(", ")}
+            </p>
+          )}
+        </CardRow>
       ));
-    }
-    return data.map((item, i) => (
-      <tr key={item.id} className="border-t border-slate-200">
-        <td className="px-4 py-3 text-slate-600">{i + 1}</td>
-        <td className="px-4 py-3 text-slate-900">{item.group_name}</td>
-        <td className="px-4 py-3 text-slate-600">{item.group_type?.replace(/_/g, ' ')}</td>
-        <td className="px-4 py-3 text-slate-600">{item.research_area}</td>
-        <td className="px-4 py-3 text-slate-600">{item.role?.replace(/_/g, ' ')}</td>
-        <td className="px-4 py-3 text-slate-600">{item.status}</td>
-        <td className="px-4 py-3 text-slate-600">{item.number_of_members}</td>
-        <td className="px-4 py-3"><button onClick={() => handleEdit(item)} className="text-blue-600 hover:text-blue-800 text-sm mr-3">Edit</button><button onClick={() => handleDelete(item.id)} className="text-red-600 hover:text-red-800 text-sm">Delete</button></td>
-      </tr>
+    return data.map((item) => (
+      <CardRow
+        key={item.id}
+        onEdit={() => openEdit(item)}
+        onDelete={() => handleDelete(item.id)}
+      >
+        <p className="font-semibold text-slate-900">{item.group_name}</p>
+        <p className="text-xs text-slate-500">
+          {item.group_type?.replace(/_/g, " ")} ·{" "}
+          {item.role?.replace(/_/g, " ")}
+        </p>
+        <p className="text-xs text-slate-400">
+          {item.status}{" "}
+          {item.number_of_members ? `· ${item.number_of_members} members` : ""}
+        </p>
+      </CardRow>
     ));
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+    <div className="mt-6 space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-lg font-bold text-slate-900">Research Profile</h3>
-          <p className="text-sm text-slate-500 mt-1">Manage your awards, editorial roles, and group memberships.</p>
+          <h3 className="text-base font-bold text-slate-900">
+            Research Profile
+          </h3>
+          <p className="text-sm text-slate-500">
+            Manage awards, editorial roles, and research group memberships.
+          </p>
         </div>
-        <button onClick={() => { setEditing(null); setForm({}); setShowModal(true); }} className={addButtonClass}>
+        <button onClick={openAdd} className={addButtonClass}>
           <AddIcon /> Add New
         </button>
       </div>
-      <SubTabs tabs={researchTabs} active={subTab} onChange={setSubTab} />
-      {loading ? <div className="text-sm text-slate-500">Loading...</div> : (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
-              <tr>
-                <th className="px-4 py-3">S/N</th>
-                {subTab === "awards" ? <th className="px-4 py-3">Award</th> : null}
-                {subTab === "awards" ? <th className="px-4 py-3">Organization</th> : null}
-                {subTab === "editorial" ? <th className="px-4 py-3">Journal</th> : null}
-                {subTab === "editorial" ? <th className="px-4 py-3">Publisher</th> : null}
-                {subTab === "groups" ? <th className="px-4 py-3">Group</th> : null}
-                {subTab === "groups" ? <th className="px-4 py-3">Role</th> : null}
-                <th className="px-4 py-3">Year</th>
-                <th className="px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.length === 0 && <tr><td colSpan={10} className="px-4 py-4 text-slate-500">No entries yet.</td></tr>}
-              {renderTable()}
-            </tbody>
-          </table>
-        </div>
+
+      <SubTabs
+        tabs={[
+          { id: "awards", label: "Awards" },
+          { id: "editorial", label: "Editorial Appointments" },
+          { id: "groups", label: "Research Groups" },
+        ]}
+        active={subTab}
+        onChange={setSubTab}
+      />
+
+      {loading ? (
+        <p className="py-4 text-sm text-slate-500">Loading…</p>
+      ) : (
+        <div className="space-y-3">{renderCards()}</div>
       )}
-      <button onClick={() => { setEditing(null); setForm({}); setShowModal(true); }} className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700">Add New</button>
-      <Modal open={showModal} onClose={() => setShowModal(false)} title={editing ? "Edit Entry" : "Add Entry"}>
-        <form onSubmit={handleSave} className="space-y-2">
-          {renderFields()}
-          {error && <div className="text-red-500 text-sm">{error}</div>}
-          <div className="flex gap-3 pt-2">
-            <button type="submit" disabled={submitting} className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold">{submitting ? "Saving..." : "Save"}</button>
-            <button type="button" onClick={() => setShowModal(false)} className="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-semibold">Cancel</button>
+
+      <Modal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        title={editing ? "Edit Entry" : "Add Entry"}
+      >
+        <form onSubmit={handleSave} className="space-y-4">
+          {renderFormFields()}
+          {error && (
+            <p role="alert" className="text-sm text-rose-600">
+              {error}
+            </p>
+          )}
+          <div className="flex gap-2.5 pt-2">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="flex-1 rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {submitting ? "Saving…" : "Save"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="flex-1 rounded-xl border border-slate-200 bg-white py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+            >
+              Cancel
+            </button>
           </div>
         </form>
       </Modal>
@@ -577,32 +1216,70 @@ function ResearchSection() {
   );
 }
 
+/* ════════════════════════════════════════════════════════════════════
+   MAIN PAGE
+   ════════════════════════════════════════════════════════════════════ */
 export default function MyAccount() {
   const [tab, setTab] = useState("fellowships");
+
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50/30 to-indigo-50/40 flex flex-col">
+    <div className="flex min-h-dvh flex-col bg-slate-50">
       <Header />
-      <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 py-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="bg-white/80 backdrop-blur-xl rounded-3xl border border-white/20 shadow-[0_32px_64px_-12px_rgba(0,0,0,0.25)] h-full min-h-[calc(100vh-12rem)] flex flex-col">
-            <div className="px-8 py-8 border-b border-slate-200/50">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-linear-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+
+      <main className="flex-1 w-full px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="mx-auto max-w-5xl">
+          <div className="rounded-3xl border border-slate-200 bg-white shadow-[0_8px_32px_-16px_rgba(15,23,42,0.15)]">
+            {/* Page header */}
+            <div className="border-b border-slate-200 px-5 py-5 sm:px-8 sm:py-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-sm">
+                    <svg
+                      className="h-6 w-6 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">
+                      My Account
+                    </h1>
+                    <p className="text-sm text-slate-500">
+                      Fellowships, appointments, and research profile.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h1 className="text-3xl font-bold bg-linear-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">My Account</h1>
-                  <p className="text-slate-600 mt-1">Manage your fellowships, appointments, and research profile.</p>
+                {/* Section switcher — in header on sm+ */}
+                <div className="sm:hidden">
+                  <SectionSwitcher tab={tab} setTab={setTab} />
                 </div>
               </div>
+              {/* Section switcher — below title on sm+ */}
+              <div className="mt-4 hidden sm:block">
+                <SectionSwitcher tab={tab} setTab={setTab} />
+              </div>
             </div>
-            <div className="flex-1 p-8">
-              <SectionSwitcher tab={tab} setTab={setTab} />
-              {tab === "fellowships" ? <FellowshipSection /> : <ResearchSection />}
+
+            {/* Content */}
+            <div className="px-5 pb-8 sm:px-8">
+              {tab === "fellowships" ? (
+                <FellowshipSection key="fellowships" />
+              ) : (
+                <ResearchSection key="research" />
+              )}
             </div>
           </div>
         </div>
       </main>
+
       <Footer />
     </div>
   );

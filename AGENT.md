@@ -1,0 +1,1 @@
+- Ensure frontend is mobile compatible and responsive 
