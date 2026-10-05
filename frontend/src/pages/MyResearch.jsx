@@ -345,6 +345,7 @@ function MyResearch() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  const [doiError, setDoiError] = useState("");
   const [activities, setActivities] = useState([]);
   const [loadingActivities, setLoadingActivities] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -381,33 +382,56 @@ function MyResearch() {
     return location.includes("nigeria") ? "local" : "foreign";
   };
 
-  const fetchDOIDetails = async (doi) => {
+  /**
+   * Fetch metadata from CrossRef for the given DOI.
+   * @param {string} doi
+   * @param {boolean} nullOnly  When true, only fields that are currently blank/null
+   *                            in formData will be updated (preserves existing values).
+   */
+  const fetchDOIDetails = async (doi, nullOnly = false) => {
     if (!doi) return;
     setLoading(true);
+    setDoiError("");
     try {
-      const response = await fetch(`https://api.crossref.org/works/${doi}`);
+      const response = await fetch(`https://api.crossref.org/works/doi/${doi}`);
+      if (!response.ok) {
+        setDoiError("DOI not found. Check the DOI and try again.");
+        setLoading(false);
+        return;
+      }
       const data = await response.json();
       const work = data.message;
       let publicationType = "";
       if (work.type === "journal-article") publicationType = "journal";
       else if (["book", "monograph", "book-chapter"].includes(work.type)) publicationType = "book";
       else if (work.type === "proceedings-article") publicationType = "conference";
-      setFormData((prev) => ({
-        ...prev,
-        title: work.title?.[0] || "",
-        bookTitle: publicationType === "book" ? work["container-title"]?.[0] || prev.bookTitle || "" : prev.bookTitle || "",
-        authors: work.author?.map((a) => `${a.given || ""} ${a.family || ""}`).join(", ") || "",
-        journal: publicationType === "book" ? work.publisher || work["container-title"]?.[0] || "" : work["container-title"]?.[0] || "",
-        volume: work.volume || "",
-        issue: work.issue || "",
-        publicationYear: String(work.published?.["date-parts"]?.[0]?.[0] || work.issued?.["date-parts"]?.[0]?.[0] || ""),
-        publicationType,
-        publicationScope: prev.publicationScope || inferPublicationScope(work),
-        doi: work.DOI || doi,
-        no_of_citations: work["reference-count"] ?? prev.no_of_citations ?? "",
-      }));
+
+      const isEmpty = (v) => v === null || v === undefined || String(v).trim() === "";
+
+      setFormData((prev) => {
+        const pick = (field, incoming) =>
+          nullOnly && !isEmpty(prev[field]) ? prev[field] : incoming;
+
+        const resolvedType = nullOnly && !isEmpty(prev.publicationType) ? prev.publicationType : publicationType;
+
+        return {
+          ...prev,
+          publicationType: resolvedType,
+          title:           pick("title",           work.title?.[0] || ""),
+          bookTitle:       pick("bookTitle",        resolvedType === "book" ? work["container-title"]?.[0] || "" : ""),
+          authors:         pick("authors",          work.author?.map((a) => `${a.given || ""} ${a.family || ""}`).join(", ") || ""),
+          journal:         pick("journal",          resolvedType === "book" ? work.publisher || work["container-title"]?.[0] || "" : work["container-title"]?.[0] || ""),
+          volume:          pick("volume",           work.volume || ""),
+          issue:           pick("issue",            work.issue || ""),
+          publicationYear: pick("publicationYear",  String(work.published?.["date-parts"]?.[0]?.[0] || work.issued?.["date-parts"]?.[0]?.[0] || "")),
+          publicationScope:pick("publicationScope", inferPublicationScope(work)),
+          doi:             work.DOI || doi,
+          no_of_citations: pick("no_of_citations",  work["reference-count"] ?? ""),
+        };
+      });
     } catch (err) {
       console.error("Error fetching DOI details:", err);
+      setDoiError("Unable to reach the DOI service. Check your connection and try again.");
     }
     setLoading(false);
   };
@@ -415,6 +439,14 @@ function MyResearch() {
   const handleDOIBlur = (e) => {
     const doi = e.target.value.replace("https://doi.org/", "").replace("http://dx.doi.org/", "");
     if (doi) fetchDOIDetails(doi);
+  };
+
+  const handleDOIFillMissing = () => {
+    const doi = (formData.doi || "")
+      .replace("https://doi.org/", "")
+      .replace("http://dx.doi.org/", "")
+      .trim();
+    if (doi) fetchDOIDetails(doi, true);
   };
 
   const handleFieldChange = (e) => {
@@ -443,6 +475,7 @@ function MyResearch() {
     setSelectedCategory(activeTab);
     setFormData({});
     setSubmitError("");
+    setDoiError("");
     setEditingId(null);
     setShowModal(true);
   };
@@ -471,6 +504,7 @@ function MyResearch() {
       sdg_alignment: Array.isArray(activity.sdg_alignment) ? activity.sdg_alignment : [],
     });
     setSubmitError("");
+    setDoiError("");
     setShowModal(true);
   };
 
@@ -480,6 +514,7 @@ function MyResearch() {
     setEditingId(activity.id);
     setFormData({ conferenceName: activity.conference_name || "", presentationTitle: activity.title || "", conferenceLocation: activity.location || "", conferenceDate: activity.date || "", conferenceType });
     setSubmitError("");
+    setDoiError("");
     setShowModal(true);
   };
 
@@ -488,6 +523,7 @@ function MyResearch() {
     setEditingId(activity.id);
     setFormData({ grantTitle: activity.title || "", grantNumber: activity.grant_number || "", fundingAgency: activity.funding_agency || "", grantAmount: activity.amount != null ? String(activity.amount) : "", grantCurrency: activity.currency || "", grantStartDate: activity.start_date || activity.date || "", grantEndDate: activity.end_date || "", grantStatus: activity.status || "", grantDescription: activity.description || "" });
     setSubmitError("");
+    setDoiError("");
     setShowModal(true);
   };
 
@@ -496,6 +532,7 @@ function MyResearch() {
     setEditingId(activity.id);
     setFormData({ innovationTitle: activity.title || "", innovationType: activity.subcategory || "", industryPartner: activity.collaborators || "", innovationDate: activity.date || "", innovationDescription: activity.description || "" });
     setSubmitError("");
+    setDoiError("");
     setShowModal(true);
   };
 
@@ -511,6 +548,7 @@ function MyResearch() {
     setEditingId(activity.id);
     setFormData({ patentTitle: activity.title || "", patentNumber: activity.patent_number || "", patentAgency: activity.patent_agency || "", patentStatus: activity.patent_status || "", patentFilingDate: activity.date || "", patentInventors, patentAbstract });
     setSubmitError("");
+    setDoiError("");
     setShowModal(true);
   };
 
@@ -619,8 +657,25 @@ function MyResearch() {
               <label className={labelClass}>DOI / URL</label>
               <div className="flex gap-2">
                 <input type="text" name="doi" value={formData.doi || ""} onBlur={handleDOIBlur} onChange={handleFieldChange} className={`${inputClass} flex-1`} placeholder="Paste DOI to auto-fill" />
-                {loading && <span className="self-center text-xs text-blue-600 whitespace-nowrap">Loading…</span>}
+                <button
+                  type="button"
+                  onClick={handleDOIFillMissing}
+                  disabled={loading || !formData.doi}
+                  title="Fill only empty fields from DOI"
+                  className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {loading ? (
+                    <svg className="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 12a8 8 0 0116 0" /></svg>
+                  ) : (
+                    <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M12 12V4m0 8l-3-3m3 3l3-3" /></svg>
+                  )}
+                  Fill missing
+                </button>
               </div>
+              {doiError && (
+                <p role="alert" className="mt-1.5 text-xs text-rose-600">{doiError}</p>
+              )}
+              <p className="mt-1 text-xs text-slate-400">Fill missing updates only empty fields</p>
             </div>
             {/* Publication Type */}
             <div>
